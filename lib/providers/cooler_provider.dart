@@ -53,6 +53,9 @@ class CoolerProvider extends ChangeNotifier {
   double _coolingProgress = 0.0;
   String _coolingStepText = '';
 
+  // Scanning state
+  bool _isScanning = false;
+
   // Stress test
   bool _isStressing = false;
 
@@ -76,6 +79,7 @@ class CoolerProvider extends ChangeNotifier {
   bool get isCooling => _isCooling;
   double get coolingProgress => _coolingProgress;
   String get coolingStepText => _coolingStepText;
+  bool get isScanning => _isScanning;
   bool get isStressing => _isStressing;
   double get warningThreshold => _warningThreshold;
   String get coolingMode => _coolingMode;
@@ -171,11 +175,11 @@ class CoolerProvider extends ChangeNotifier {
     _isCooling = true;
     _isStressing = false;
     _coolingProgress = 0.0;
-    _coolingStepText = 'Scanning device processes...';
+    _coolingStepText = 'Optimizing device... Scanning processes...';
     notifyListeners();
 
     // Step 1: Lower screen brightness to reduce heat
-    _coolingStepText = 'Lowering screen brightness...';
+    _coolingStepText = 'Optimizing device... Lowering screen brightness...';
     notifyListeners();
     try {
       await ScreenBrightness().setApplicationScreenBrightness(0.2);
@@ -186,7 +190,7 @@ class CoolerProvider extends ChangeNotifier {
     _coolingProgress = 0.25;
 
     // Step 2: Kill real background processes via native channel
-    _coolingStepText = 'Terminating background processes...';
+    _coolingStepText = 'Optimizing device... Terminating background processes...';
     notifyListeners();
     int killedCount = 0;
     try {
@@ -198,7 +202,7 @@ class CoolerProvider extends ChangeNotifier {
     _coolingProgress = 0.5;
 
     // Step 3: Simulate clearing app caches / throttling
-    _coolingStepText = 'Releasing cached memory ($killedCount processes cleared)...';
+    _coolingStepText = 'Optimizing device... Releasing memory ($killedCount cleared)...';
     notifyListeners();
     _cpuUsage = max(12.0, _cpuUsage - 30.0);
     _ramUsage = max(30.0, _ramUsage - 20.0);
@@ -206,13 +210,13 @@ class CoolerProvider extends ChangeNotifier {
     _coolingProgress = 0.75;
 
     // Step 4: Wait for temperature to begin dropping
-    _coolingStepText = 'Applying thermal throttle profile...';
+    _coolingStepText = 'Optimizing device... Applying thermal throttle profile...';
     notifyListeners();
     await Future.delayed(const Duration(milliseconds: 800));
     _coolingProgress = 1.0;
 
     // Step 5: Restore brightness and finish
-    _coolingStepText = 'Restoring settings. Cooling complete!';
+    _coolingStepText = 'Optimizing device... Restoring settings. Cooling complete!';
     notifyListeners();
     try {
       await ScreenBrightness().resetApplicationScreenBrightness();
@@ -220,20 +224,20 @@ class CoolerProvider extends ChangeNotifier {
       if (kDebugMode) print('Brightness reset error: $e');
     }
 
-    // Mark visual processes as killed
-    _processes = _processes.map((p) => p.isSelected ? p.copyWith(isSelected: false) : p).toList();
+    // Clear visual processes (since full cool down optimized everything)
+    _processes.clear();
 
     await Future.delayed(const Duration(seconds: 1));
     _isCooling = false;
     _coolingProgress = 0.0;
     _coolingStepText = '';
-    _resetProcesses();
     notifyListeners();
   }
 
   void toggleStressTest() {
     _isStressing = !_isStressing;
     if (_isStressing) {
+      _resetProcesses();
       _cpuUsage = 94.0;
       _ramUsage = 88.0;
       _stressTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -269,7 +273,7 @@ class CoolerProvider extends ChangeNotifier {
 
     if (totalCpuFreed > 0) {
       _isCooling = true;
-      _coolingStepText = 'Terminating selected apps...';
+      _coolingStepText = 'Optimizing device... Terminating selected apps...';
       notifyListeners();
 
       // Actually kill background processes
@@ -280,13 +284,29 @@ class CoolerProvider extends ChangeNotifier {
       }
 
       await Future.delayed(const Duration(seconds: 2));
-      _processes = _processes.map((p) => p.isSelected ? p.copyWith(isSelected: false) : p).toList();
+      
+      // Remove optimized processes from the list
+      _processes.removeWhere((p) => p.isSelected);
+      
       _cpuUsage = max(15.0, _cpuUsage - totalCpuFreed * 0.8);
       _isCooling = false;
       _coolingStepText = '';
-      _resetProcesses();
       notifyListeners();
     }
+  }
+
+  Future<void> scanProcesses() async {
+    if (_isScanning) return;
+    _isScanning = true;
+    _coolingStepText = 'Optimizing device... Scanning running services...';
+    notifyListeners();
+
+    await Future.delayed(const Duration(seconds: 2));
+
+    _resetProcesses();
+    _isScanning = false;
+    _coolingStepText = '';
+    notifyListeners();
   }
 
   void updateWarningThreshold(double val) {

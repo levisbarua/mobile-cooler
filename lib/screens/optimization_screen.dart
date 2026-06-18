@@ -14,7 +14,7 @@ class OptimizationScreen extends StatelessWidget {
       body: Consumer<CoolerProvider>(
         builder: (context, provider, child) {
           final processes = provider.processes;
-          final isOptimizing = provider.isCooling && provider.coolingStepText.contains('Optimizing');
+          final isOptimizing = provider.isCooling || provider.isScanning;
           
           double totalSelectedCpu = 0.0;
           double totalSelectedRam = 0.0;
@@ -168,176 +168,241 @@ class OptimizationScreen extends StatelessWidget {
                           ),
                         ),
 
-                        // App List
+                        // App List or Scan UI
                         Expanded(
-                          child: ListView.builder(
-                            itemCount: processes.length,
-                            padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                            physics: const BouncingScrollPhysics(),
-                            itemBuilder: (context, index) {
-                              final process = processes[index];
-                              
-                              IconData processIcon;
-                              switch (process.iconName) {
-                                case 'share':
-                                  processIcon = Icons.share_rounded;
-                                  break;
-                                case 'sync':
-                                  processIcon = Icons.sync_rounded;
-                                  break;
-                                case 'gamepad':
-                                  processIcon = Icons.gamepad_rounded;
-                                  break;
-                                case 'tv':
-                                  processIcon = Icons.tv_rounded;
-                                  break;
-                                case 'navigation':
-                                  processIcon = Icons.navigation_rounded;
-                                  break;
-                                default:
-                                  processIcon = Icons.android_rounded;
-                              }
-
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 12.0),
-                                child: InkWell(
-                                  onTap: () => provider.toggleProcess(index),
-                                  borderRadius: BorderRadius.circular(16),
-                                  child: GlassCard(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                    borderRadius: 16,
-                                    borderColor: process.isSelected 
-                                        ? Colors.cyanAccent.withOpacity(0.3) 
-                                        : Colors.white.withOpacity(0.08),
-                                    gradientColors: process.isSelected
-                                        ? [
-                                            Colors.cyanAccent.withOpacity(0.04),
-                                            Colors.white.withOpacity(0.04),
-                                          ]
-                                        : null,
-                                    child: Row(
+                          child: processes.isEmpty
+                              ? Center(
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 40.0),
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
                                       children: [
-                                        // Left Icon
                                         Container(
-                                          padding: const EdgeInsets.all(10),
+                                          padding: const EdgeInsets.all(20),
                                           decoration: BoxDecoration(
-                                            color: process.isSelected 
-                                                ? Colors.cyanAccent.withOpacity(0.12)
-                                                : Colors.white.withOpacity(0.05),
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child: Icon(
-                                            processIcon,
-                                            color: process.isSelected ? Colors.cyanAccent : Colors.white54,
-                                            size: 22,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 14),
-
-                                        // App name and Category
-                                        Expanded(
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                process.name,
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 14,
-                                                ),
-                                              ),
-                                              const SizedBox(height: 3),
-                                              Text(
-                                                process.category,
-                                                style: TextStyle(
-                                                  color: Colors.white.withOpacity(0.4),
-                                                  fontSize: 11,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-
-                                        // Resource details
-                                        Column(
-                                          crossAxisAlignment: CrossAxisAlignment.end,
-                                          children: [
-                                            Text(
-                                              '${process.cpuImpact.toStringAsFixed(1)}% CPU',
-                                              style: GoogleFonts.outfit(
-                                                color: Colors.redAccent.shade100,
-                                                fontWeight: FontWeight.w600,
-                                                fontSize: 13,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 3),
-                                            Text(
-                                              '${process.ramImpact} MB',
-                                              style: GoogleFonts.outfit(
-                                                color: Colors.orangeAccent.shade100,
-                                                fontSize: 11,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(width: 12),
-
-                                        // Checkbox/Selection mark
-                                        Container(
-                                          width: 20,
-                                          height: 20,
-                                          decoration: BoxDecoration(
+                                            color: Colors.cyanAccent.withOpacity(0.08),
                                             shape: BoxShape.circle,
                                             border: Border.all(
-                                              color: process.isSelected ? Colors.cyanAccent : Colors.white24,
-                                              width: 1.5,
+                                              color: Colors.cyanAccent.withOpacity(0.3),
+                                              width: 2,
                                             ),
-                                            color: process.isSelected ? Colors.cyanAccent : Colors.transparent,
                                           ),
-                                          child: process.isSelected
-                                              ? const Icon(Icons.check, size: 12, color: Colors.black)
-                                              : null,
+                                          child: const Icon(
+                                            Icons.verified_user_rounded,
+                                            color: Colors.cyanAccent,
+                                            size: 48,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 25),
+                                        Text(
+                                          'System fully optimized',
+                                          style: GoogleFonts.outfit(
+                                            color: Colors.white,
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          'No high-consumption background apps detected on your device.',
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            color: Colors.white.withOpacity(0.5),
+                                            fontSize: 13,
+                                            height: 1.4,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 35),
+                                        ElevatedButton.icon(
+                                          onPressed: () => provider.scanProcesses(),
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.white.withOpacity(0.06),
+                                            foregroundColor: Colors.white,
+                                            minimumSize: const Size(180, 48),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(24),
+                                            ),
+                                            side: BorderSide(
+                                              color: Colors.white.withOpacity(0.12),
+                                              width: 1,
+                                            ),
+                                          ),
+                                          icon: const Icon(Icons.search_rounded, size: 18, color: Colors.cyanAccent),
+                                          label: const Text('Scan Services'),
                                         ),
                                       ],
                                     ),
                                   ),
+                                )
+                              : ListView.builder(
+                                  itemCount: processes.length,
+                                  padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                                  physics: const BouncingScrollPhysics(),
+                                  itemBuilder: (context, index) {
+                                    final process = processes[index];
+                                    
+                                    IconData processIcon;
+                                    switch (process.iconName) {
+                                      case 'share':
+                                        processIcon = Icons.share_rounded;
+                                        break;
+                                      case 'sync':
+                                        processIcon = Icons.sync_rounded;
+                                        break;
+                                      case 'gamepad':
+                                        processIcon = Icons.gamepad_rounded;
+                                        break;
+                                      case 'tv':
+                                        processIcon = Icons.tv_rounded;
+                                        break;
+                                      case 'navigation':
+                                        processIcon = Icons.navigation_rounded;
+                                        break;
+                                      default:
+                                        processIcon = Icons.android_rounded;
+                                    }
+
+                                    return Padding(
+                                      padding: const EdgeInsets.only(bottom: 12.0),
+                                      child: InkWell(
+                                        onTap: () => provider.toggleProcess(index),
+                                        borderRadius: BorderRadius.circular(16),
+                                        child: GlassCard(
+                                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                          borderRadius: 16,
+                                          borderColor: process.isSelected 
+                                              ? Colors.cyanAccent.withOpacity(0.3) 
+                                              : Colors.white.withOpacity(0.08),
+                                          gradientColors: process.isSelected
+                                              ? [
+                                                  Colors.cyanAccent.withOpacity(0.04),
+                                                  Colors.white.withOpacity(0.04),
+                                                ]
+                                              : null,
+                                          child: Row(
+                                            children: [
+                                              // Left Icon
+                                              Container(
+                                                padding: const EdgeInsets.all(10),
+                                                decoration: BoxDecoration(
+                                                  color: process.isSelected 
+                                                      ? Colors.cyanAccent.withOpacity(0.12)
+                                                      : Colors.white.withOpacity(0.05),
+                                                  shape: BoxShape.circle,
+                                                ),
+                                                child: Icon(
+                                                  processIcon,
+                                                  color: process.isSelected ? Colors.cyanAccent : Colors.white54,
+                                                  size: 22,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 14),
+
+                                              // App name and Category
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      process.name,
+                                                      style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontWeight: FontWeight.bold,
+                                                        fontSize: 14,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 3),
+                                                    Text(
+                                                      process.category,
+                                                      style: TextStyle(
+                                                        color: Colors.white.withOpacity(0.4),
+                                                        fontSize: 11,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+
+                                              // Resource details
+                                              Column(
+                                                crossAxisAlignment: CrossAxisAlignment.end,
+                                                children: [
+                                                  Text(
+                                                    '${process.cpuImpact.toStringAsFixed(1)}% CPU',
+                                                    style: GoogleFonts.outfit(
+                                                      color: Colors.redAccent.shade100,
+                                                      fontWeight: FontWeight.w600,
+                                                      fontSize: 13,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 3),
+                                                  Text(
+                                                    '${process.ramImpact} MB',
+                                                    style: GoogleFonts.outfit(
+                                                      color: Colors.orangeAccent.shade100,
+                                                      fontSize: 11,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                              const SizedBox(width: 12),
+
+                                              // Checkbox/Selection mark
+                                              Container(
+                                                width: 20,
+                                                height: 20,
+                                                decoration: BoxDecoration(
+                                                  shape: BoxShape.circle,
+                                                  border: Border.all(
+                                                    color: process.isSelected ? Colors.cyanAccent : Colors.white24,
+                                                    width: 1.5,
+                                                  ),
+                                                  color: process.isSelected ? Colors.cyanAccent : Colors.transparent,
+                                                ),
+                                                child: process.isSelected
+                                                    ? const Icon(Icons.check, size: 12, color: Colors.black)
+                                                    : null,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  },
                                 ),
-                              );
-                            },
-                          ),
                         ),
 
                         // Optimize button at the bottom
-                        Padding(
-                          padding: const EdgeInsets.all(20.0),
-                          child: ElevatedButton(
-                            onPressed: selectedCount > 0 
-                                ? () {
-                                    provider.optimizeApps();
-                                  } 
-                                : null,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.cyanAccent,
-                              foregroundColor: Colors.black,
-                              disabledBackgroundColor: Colors.white.withOpacity(0.08),
-                              disabledForegroundColor: Colors.white30,
-                              minimumSize: const Size(double.infinity, 52),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(26),
+                        if (processes.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.all(20.0),
+                            child: ElevatedButton(
+                              onPressed: selectedCount > 0 
+                                  ? () {
+                                      provider.optimizeApps();
+                                    } 
+                                  : null,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.cyanAccent,
+                                foregroundColor: Colors.black,
+                                disabledBackgroundColor: Colors.white.withOpacity(0.08),
+                                disabledForegroundColor: Colors.white30,
+                                minimumSize: const Size(double.infinity, 52),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(26),
+                                ),
+                                elevation: 0,
                               ),
-                              elevation: 0,
-                            ),
-                            child: Text(
-                              selectedCount > 0 ? 'OPTIMISE SELECTED ($selectedCount)' : 'SELECT APPS TO OPTIMISE',
-                              style: GoogleFonts.outfit(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 1.0,
+                              child: Text(
+                                selectedCount > 0 ? 'OPTIMISE SELECTED ($selectedCount)' : 'SELECT APPS TO OPTIMISE',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1.0,
+                                ),
                               ),
                             ),
                           ),
-                        ),
                       ],
                     ),
             ),
