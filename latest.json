@@ -1,7 +1,0 @@
-{
-  "versionCode": 3,
-  "versionName": "1.2.0",
-  "downloadUrl": "https://github.com/levisbarua/cooler/releases/download/v1.2.0/app-release.apk",
-  "releaseNotes": "• Test: Auto-update is working!\n• Tap Download to verify",
-  "forceUpdate": false
-}
