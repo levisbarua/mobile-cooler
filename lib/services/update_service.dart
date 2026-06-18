@@ -32,7 +32,7 @@ class UpdateInfo {
 class UpdateService extends ChangeNotifier {
   static const _channel = MethodChannel('com.cooler/thermal');
   static const _versionUrl =
-      'https://raw.githubusercontent.com/levisbarua/cooler/main/version.json';
+      'https://raw.githubusercontent.com/levisbarua/mobile-cooler/main/version.json';
 
   UpdateInfo? _updateInfo;
   bool _isUpdateAvailable = false;
