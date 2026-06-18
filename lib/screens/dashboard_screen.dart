@@ -5,6 +5,7 @@ import 'package:battery_plus/battery_plus.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../providers/cooler_provider.dart';
+import '../services/update_service.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/fan_animator.dart';
 
@@ -20,6 +21,10 @@ class DashboardScreen extends StatelessWidget {
       backgroundColor: const Color(0xFF090A15),
       body: Consumer<CoolerProvider>(
         builder: (context, provider, child) {
+          final updateService = context.watch<UpdateService>();
+          final showBanner = updateService.isUpdateAvailable ||
+              updateService.isDownloading ||
+              updateService.isReadyToInstall;
           final temp = provider.temperature;
           final isHot = temp >= provider.warningThreshold;
           final isWarm = temp >= 35.0 && temp < provider.warningThreshold;
@@ -56,7 +61,12 @@ class DashboardScreen extends StatelessWidget {
             child: SafeArea(
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 15.0),
+                padding: EdgeInsets.only(
+                  left: 20.0,
+                  right: 20.0,
+                  top: 15.0,
+                  bottom: showBanner ? 160.0 : 15.0,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
