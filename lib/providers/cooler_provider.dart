@@ -178,6 +178,25 @@ class CoolerProvider extends ChangeNotifier {
     _coolingStepText = 'Optimizing device... Scanning processes...';
     notifyListeners();
 
+    int stepMs = 800;
+    double totalDrop = 4.8;
+    double targetCpu = 15.0;
+    double targetRam = 35.0;
+
+    if (_coolingMode == 'Deep Freeze') {
+      stepMs = 400;
+      totalDrop = 7.2;
+      targetCpu = 10.0;
+      targetRam = 25.0;
+    } else if (_coolingMode == 'Silent Mode') {
+      stepMs = 1400;
+      totalDrop = 2.4;
+      targetCpu = 25.0;
+      targetRam = 45.0;
+    }
+
+    final double stepDrop = totalDrop / 4.0;
+
     // Step 1: Lower screen brightness to reduce heat
     _coolingStepText = 'Optimizing device... Lowering screen brightness...';
     notifyListeners();
@@ -186,8 +205,10 @@ class CoolerProvider extends ChangeNotifier {
     } catch (e) {
       if (kDebugMode) print('Brightness error: $e');
     }
-    await Future.delayed(const Duration(milliseconds: 800));
+    await Future.delayed(Duration(milliseconds: stepMs));
+    _temperature = max(20.0, double.parse((_temperature - stepDrop).toStringAsFixed(1)));
     _coolingProgress = 0.25;
+    notifyListeners();
 
     // Step 2: Kill real background processes via native channel
     _coolingStepText = 'Optimizing device... Terminating background processes...';
@@ -198,22 +219,28 @@ class CoolerProvider extends ChangeNotifier {
     } catch (e) {
       if (kDebugMode) print('Kill processes error: $e');
     }
-    await Future.delayed(const Duration(milliseconds: 800));
+    await Future.delayed(Duration(milliseconds: stepMs));
+    _temperature = max(20.0, double.parse((_temperature - stepDrop).toStringAsFixed(1)));
     _coolingProgress = 0.5;
+    notifyListeners();
 
     // Step 3: Simulate clearing app caches / throttling
     _coolingStepText = 'Optimizing device... Releasing memory ($killedCount cleared)...';
     notifyListeners();
-    _cpuUsage = max(12.0, _cpuUsage - 30.0);
-    _ramUsage = max(30.0, _ramUsage - 20.0);
-    await Future.delayed(const Duration(milliseconds: 800));
+    _cpuUsage = targetCpu;
+    _ramUsage = targetRam;
+    await Future.delayed(Duration(milliseconds: stepMs));
+    _temperature = max(20.0, double.parse((_temperature - stepDrop).toStringAsFixed(1)));
     _coolingProgress = 0.75;
+    notifyListeners();
 
     // Step 4: Wait for temperature to begin dropping
     _coolingStepText = 'Optimizing device... Applying thermal throttle profile...';
     notifyListeners();
-    await Future.delayed(const Duration(milliseconds: 800));
+    await Future.delayed(Duration(milliseconds: stepMs));
+    _temperature = max(20.0, double.parse((_temperature - stepDrop).toStringAsFixed(1)));
     _coolingProgress = 1.0;
+    notifyListeners();
 
     // Step 5: Restore brightness and finish
     _coolingStepText = 'Optimizing device... Restoring settings. Cooling complete!';
