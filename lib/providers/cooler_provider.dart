@@ -1,13 +1,15 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:battery_plus/battery_plus.dart';
+import 'package:screen_brightness/screen_brightness.dart';
 
 class AppProcess {
   final String name;
   final String category;
-  final double cpuImpact; // Percentage
-  final double ramImpact; // MB
+  final double cpuImpact;
+  final double ramImpact;
   final String iconName;
   bool isSelected;
 
@@ -33,11 +35,14 @@ class AppProcess {
 }
 
 class CoolerProvider extends ChangeNotifier {
+  static const _channel = MethodChannel('com.cooler/thermal');
   final Battery _battery = Battery();
   StreamSubscription<BatteryState>? _batterySubscription;
+  Timer? _tempPollTimer;
+  Timer? _stressTimer;
 
-  // Real-time sensor / simulation states
-  double _temperature = 34.2;
+  // Temperature state
+  double _temperature = 30.0;
   double _cpuUsage = 42.0;
   double _ramUsage = 61.0;
   int _batteryLevel = 80;
@@ -46,25 +51,21 @@ class CoolerProvider extends ChangeNotifier {
   // Cooling state
   bool _isCooling = false;
   double _coolingProgress = 0.0;
-  String _coolingStepText = 'Initializing cooling system...';
+  String _coolingStepText = '';
 
-  // Stress test state (simulates gaming/heavy tasks to test the app)
+  // Stress test
   bool _isStressing = false;
-  Timer? _stressTimer;
-
-  // History for charts
-  final List<double> _tempHistory = [32.5, 33.0, 33.8, 34.5, 35.2, 34.8, 34.2];
 
   // Settings
   double _warningThreshold = 40.0;
-  String _coolingMode = 'Deep Freeze'; // 'Smart Cool', 'Deep Freeze', 'Silent Mode'
+  String _coolingMode = 'Deep Freeze';
   bool _autoCool = false;
 
-  // List of running background processes
+  // Processes list
   List<AppProcess> _processes = [];
 
-  // Log messages
-  final List<String> _coolingLogs = [];
+  // Whether real temperature is available (Android)
+  bool _hasRealTemp = false;
 
   // Getters
   double get temperature => _temperature;
@@ -76,37 +77,82 @@ class CoolerProvider extends ChangeNotifier {
   double get coolingProgress => _coolingProgress;
   String get coolingStepText => _coolingStepText;
   bool get isStressing => _isStressing;
-  List<double> get tempHistory => _tempHistory;
   double get warningThreshold => _warningThreshold;
   String get coolingMode => _coolingMode;
   bool get autoCool => _autoCool;
   List<AppProcess> get processes => _processes;
-  List<String> get coolingLogs => _coolingLogs;
+  bool get hasRealTemp => _hasRealTemp;
 
   CoolerProvider() {
     _initBattery();
     _resetProcesses();
-    _startBackgroundTicker();
+    _startRealTempPolling();
   }
 
   void _initBattery() async {
     try {
       _batteryLevel = await _battery.batteryLevel;
-      _batteryState = await _battery.onBatteryStateChanged.first;
       notifyListeners();
     } catch (e) {
-      if (kDebugMode) print('Battery API error: $e');
+      if (kDebugMode) print('Battery level error: $e');
     }
 
     _batterySubscription = _battery.onBatteryStateChanged.listen((state) {
       _batteryState = state;
-      // Charging heats up the battery
-      if (state == BatteryState.charging && _temperature < 38.0) {
-        _temperature += 1.5;
-        _addLog('Device connected to charger. Temperature rising slightly.');
-      }
       notifyListeners();
     });
+  }
+
+  /// Poll real battery temperature from Android native every 3 seconds
+  void _startRealTempPolling() {
+    _fetchRealTemperature();
+    _tempPollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      if (!_isCooling) _fetchRealTemperature();
+
+      // Refresh battery level
+      _battery.batteryLevel.then((level) {
+        if (_batteryLevel != level) {
+          _batteryLevel = level;
+          notifyListeners();
+        }
+      }).catchError((_) {});
+
+      // Auto-cool trigger
+      if (_autoCool && _temperature >= _warningThreshold && !_isCooling) {
+        startCooling();
+      }
+    });
+  }
+
+  Future<void> _fetchRealTemperature() async {
+    try {
+      final double temp = await _channel.invokeMethod('getBatteryTemperature');
+      if (temp > 0) {
+        _hasRealTemp = true;
+        _temperature = temp;
+
+        // Simulate CPU / RAM drift alongside real temp
+        final random = Random();
+        _cpuUsage = (_cpuUsage + (random.nextDouble() - 0.5) * 3).clamp(10.0, 98.0);
+        _ramUsage = (_ramUsage + (random.nextDouble() - 0.5) * 2).clamp(30.0, 95.0);
+
+        notifyListeners();
+      }
+    } catch (e) {
+      if (kDebugMode) print('Temperature channel error: $e');
+      // Fallback: simulate if real temp not available (web/desktop)
+      _simulateTemperatureDrift();
+    }
+  }
+
+  void _simulateTemperatureDrift() {
+    final random = Random();
+    double drift = (random.nextDouble() - 0.48) * 0.4;
+    if (_batteryState == BatteryState.charging) drift += 0.15;
+    if (_isStressing) drift += 0.8;
+    _temperature = (_temperature + drift).clamp(31.0, 48.0);
+    _temperature = double.parse(_temperature.toStringAsFixed(1));
+    notifyListeners();
   }
 
   void _resetProcesses() {
@@ -119,137 +165,90 @@ class CoolerProvider extends ChangeNotifier {
     ];
   }
 
-  // A light background ticker to simulate ambient temperature drift
-  void _startBackgroundTicker() {
-    Timer.periodic(const Duration(seconds: 5), (timer) {
-      if (_isCooling) return;
-
-      // Read real battery level in background if possible
-      _battery.batteryLevel.then((level) {
-        if (_batteryLevel != level) {
-          _batteryLevel = level;
-          notifyListeners();
-        }
-      }).catchError((_) {});
-
-      final random = Random();
-      double drift = (random.nextDouble() - 0.48) * 0.4; // Slightly positive drift
-
-      // If charging, tend to heat up
-      if (_batteryState == BatteryState.charging) {
-        drift += 0.15;
-      }
-
-      // If stressing, heat up significantly
-      if (_isStressing) {
-        drift += 0.8;
-      }
-
-      _temperature = double.parse((_temperature + drift).toStringAsFixed(1));
-      
-      // Bound temperatures realistically
-      if (_temperature < 31.0) _temperature = 31.0;
-      if (_temperature > 48.0) _temperature = 48.0;
-
-      // Update history
-      _tempHistory.add(_temperature);
-      if (_tempHistory.length > 15) {
-        _tempHistory.removeAt(0);
-      }
-
-      // Handle Auto Cooling if enabled
-      if (_autoCool && _temperature >= _warningThreshold) {
-        _addLog('Auto-cool triggered. Temperature (${_temperature}°C) exceeded threshold.');
-        startCooling();
-      }
-
-      notifyListeners();
-    });
-  }
-
-  // Start Cooling operation (visual flow + state reduction)
-  void startCooling() {
+  Future<void> startCooling() async {
     if (_isCooling) return;
 
     _isCooling = true;
     _isStressing = false;
     _coolingProgress = 0.0;
-    _coolingStepText = 'Scanning running applications...';
-    _addLog('Started manual cooling sequence in $coolingMode mode.');
+    _coolingStepText = 'Scanning device processes...';
     notifyListeners();
 
-    int ticks = 40; // 5 ticks per second (200ms interval)
-    int currentTick = 0;
+    // Step 1: Lower screen brightness to reduce heat
+    _coolingStepText = 'Lowering screen brightness...';
+    notifyListeners();
+    try {
+      await ScreenBrightness().setApplicationScreenBrightness(0.2);
+    } catch (e) {
+      if (kDebugMode) print('Brightness error: $e');
+    }
+    await Future.delayed(const Duration(milliseconds: 800));
+    _coolingProgress = 0.25;
 
-    Timer.periodic(const Duration(milliseconds: 200), (timer) {
-      currentTick++;
-      _coolingProgress = currentTick / ticks;
+    // Step 2: Kill real background processes via native channel
+    _coolingStepText = 'Terminating background processes...';
+    notifyListeners();
+    int killedCount = 0;
+    try {
+      killedCount = await _channel.invokeMethod('killBackgroundProcesses');
+    } catch (e) {
+      if (kDebugMode) print('Kill processes error: $e');
+    }
+    await Future.delayed(const Duration(milliseconds: 800));
+    _coolingProgress = 0.5;
 
-      if (currentTick <= 10) {
-        _coolingStepText = 'Scanning CPU core frequencies...';
-      } else if (currentTick <= 20) {
-        _coolingStepText = 'Closing heavy background applications...';
-      } else if (currentTick <= 30) {
-        _coolingStepText = 'Purging cached application memory...';
-        // Simulating clearing processes
-        if (currentTick == 25) {
-          _processes = _processes.map((p) => p.isSelected ? p.copyWith(isSelected: false) : p).toList();
-        }
-      } else if (currentTick <= 38) {
-        _coolingStepText = 'Applying thermal cooling profile...';
-      } else {
-        _coolingStepText = 'Cooling complete! Temperature stabilized.';
-      }
+    // Step 3: Simulate clearing app caches / throttling
+    _coolingStepText = 'Releasing cached memory ($killedCount processes cleared)...';
+    notifyListeners();
+    _cpuUsage = max(12.0, _cpuUsage - 30.0);
+    _ramUsage = max(30.0, _ramUsage - 20.0);
+    await Future.delayed(const Duration(milliseconds: 800));
+    _coolingProgress = 0.75;
 
-      // Dynamically drop temperature during cooling
-      double tempDropScale = 0.0;
-      if (_coolingMode == 'Smart Cool') {
-        tempDropScale = 0.08;
-      } else if (_coolingMode == 'Deep Freeze') {
-        tempDropScale = 0.12;
-      } else if (_coolingMode == 'Silent Mode') {
-        tempDropScale = 0.05;
-      }
+    // Step 4: Wait for temperature to begin dropping
+    _coolingStepText = 'Applying thermal throttle profile...';
+    notifyListeners();
+    await Future.delayed(const Duration(milliseconds: 800));
+    _coolingProgress = 1.0;
 
-      _temperature = double.parse((_temperature - tempDropScale).toStringAsFixed(1));
-      if (_temperature < 32.5) _temperature = 32.5;
+    // Step 5: Restore brightness and finish
+    _coolingStepText = 'Restoring settings. Cooling complete!';
+    notifyListeners();
+    try {
+      await ScreenBrightness().resetApplicationScreenBrightness();
+    } catch (e) {
+      if (kDebugMode) print('Brightness reset error: $e');
+    }
 
-      // Drop CPU and RAM loads
-      _cpuUsage = max(12.0, _cpuUsage - 1.2);
-      _ramUsage = max(35.0, _ramUsage - 0.8);
+    // Mark visual processes as killed
+    _processes = _processes.map((p) => p.isSelected ? p.copyWith(isSelected: false) : p).toList();
 
-      if (currentTick >= ticks) {
-        timer.cancel();
-        _isCooling = false;
-        _coolingProgress = 0.0;
-        _addLog('Cooling complete. Stabilized temperature at ${_temperature}°C.');
-        _resetProcesses();
-        notifyListeners();
-      } else {
-        notifyListeners();
-      }
-    });
+    await Future.delayed(const Duration(seconds: 1));
+    _isCooling = false;
+    _coolingProgress = 0.0;
+    _coolingStepText = '';
+    _resetProcesses();
+    notifyListeners();
   }
 
-  // Stress test: heats up the phone for demonstration purposes
   void toggleStressTest() {
     _isStressing = !_isStressing;
     if (_isStressing) {
-      _addLog('Stress test started: Simulating high CPU load.');
       _cpuUsage = 94.0;
       _ramUsage = 88.0;
-      // Faster temperature rise timer
       _stressTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
         if (!_isStressing || _isCooling) {
           timer.cancel();
           return;
         }
-        _temperature = double.parse((_temperature + 0.4).toStringAsFixed(1));
-        if (_temperature > 46.0) _temperature = 46.0;
-        notifyListeners();
+        // On desktop/web simulate heat; on Android real temp comes from polling
+        if (!_hasRealTemp) {
+          _temperature = (_temperature + 0.4).clamp(31.0, 46.0);
+          _temperature = double.parse(_temperature.toStringAsFixed(1));
+          notifyListeners();
+        }
       });
     } else {
-      _addLog('Stress test stopped.');
       _cpuUsage = 40.0;
       _ramUsage = 60.0;
       _stressTimer?.cancel();
@@ -257,53 +256,39 @@ class CoolerProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Toggle app check status in the app optimizer list
   void toggleProcess(int index) {
     _processes[index].isSelected = !_processes[index].isSelected;
     notifyListeners();
   }
 
-  // Optimize only the selected apps
-  void optimizeApps() {
+  Future<void> optimizeApps() async {
     double totalCpuFreed = 0.0;
-    double totalRamFreed = 0.0;
-
     for (var process in _processes) {
-      if (process.isSelected) {
-        totalCpuFreed += process.cpuImpact;
-        totalRamFreed += process.ramImpact;
-      }
+      if (process.isSelected) totalCpuFreed += process.cpuImpact;
     }
 
     if (totalCpuFreed > 0) {
       _isCooling = true;
-      _coolingStepText = 'Optimizing selected apps...';
+      _coolingStepText = 'Terminating selected apps...';
       notifyListeners();
 
-      Future.delayed(const Duration(seconds: 2), () {
-        _processes = _processes.map((p) => p.isSelected ? p.copyWith(isSelected: false) : p).toList();
-        _cpuUsage = max(15.0, _cpuUsage - totalCpuFreed * 0.8);
-        _ramUsage = max(38.0, _ramUsage - (totalRamFreed / 10)); // simulated load drop
-        _temperature = double.parse((_temperature - (totalCpuFreed * 0.05)).toStringAsFixed(1));
-        if (_temperature < 32.5) _temperature = 32.5;
+      // Actually kill background processes
+      try {
+        await _channel.invokeMethod('killBackgroundProcesses');
+      } catch (e) {
+        if (kDebugMode) print('Kill error: $e');
+      }
 
-        _isCooling = false;
-        _addLog('Optimized apps. Recovered CPU load: ${totalCpuFreed.toStringAsFixed(1)}%.');
-        _resetProcesses();
-        notifyListeners();
-      });
+      await Future.delayed(const Duration(seconds: 2));
+      _processes = _processes.map((p) => p.isSelected ? p.copyWith(isSelected: false) : p).toList();
+      _cpuUsage = max(15.0, _cpuUsage - totalCpuFreed * 0.8);
+      _isCooling = false;
+      _coolingStepText = '';
+      _resetProcesses();
+      notifyListeners();
     }
   }
 
-  // Log updater helper
-  void _addLog(String message) {
-    final time = DateTime.now();
-    final timeStr = '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}:${time.second.toString().padLeft(2, '0')}';
-    _coolingLogs.insert(0, '[$timeStr] $message');
-    if (_coolingLogs.length > 50) _coolingLogs.removeLast();
-  }
-
-  // Settings update
   void updateWarningThreshold(double val) {
     _warningThreshold = double.parse(val.toStringAsFixed(1));
     notifyListeners();
@@ -322,6 +307,7 @@ class CoolerProvider extends ChangeNotifier {
   @override
   void dispose() {
     _batterySubscription?.cancel();
+    _tempPollTimer?.cancel();
     _stressTimer?.cancel();
     super.dispose();
   }

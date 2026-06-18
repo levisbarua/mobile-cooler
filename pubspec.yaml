@@ -40,6 +40,7 @@ dependencies:
   shared_preferences: ^2.5.5
   battery_plus: ^7.0.0
   device_info_plus: ^13.1.0
+  screen_brightness: ^2.1.11
 
 dev_dependencies:
   flutter_test:
