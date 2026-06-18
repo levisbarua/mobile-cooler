@@ -61,7 +61,7 @@ class CoolerProvider extends ChangeNotifier {
 
   // Settings
   double _warningThreshold = 40.0;
-  String _coolingMode = 'Deep Freeze';
+  String _coolingMode = 'Auto';
   bool _autoCool = false;
 
   // Processes list
@@ -83,6 +83,16 @@ class CoolerProvider extends ChangeNotifier {
   bool get isStressing => _isStressing;
   double get warningThreshold => _warningThreshold;
   String get coolingMode => _coolingMode;
+  String get effectiveCoolingMode {
+    if (_coolingMode != 'Auto') return _coolingMode;
+    if (_temperature >= _warningThreshold + 2.0) {
+      return 'Deep Freeze';
+    } else if (_temperature < 35.0) {
+      return 'Silent Mode';
+    } else {
+      return 'Smart Cool';
+    }
+  }
   bool get autoCool => _autoCool;
   List<AppProcess> get processes => _processes;
   bool get hasRealTemp => _hasRealTemp;
@@ -175,7 +185,9 @@ class CoolerProvider extends ChangeNotifier {
     _isCooling = true;
     _isStressing = false;
     _coolingProgress = 0.0;
-    _coolingStepText = 'Optimizing device... Scanning processes...';
+    
+    final resolvedMode = effectiveCoolingMode;
+    _coolingStepText = 'Optimizing ($resolvedMode)... Scanning...';
     notifyListeners();
 
     int stepMs = 800;
@@ -183,12 +195,12 @@ class CoolerProvider extends ChangeNotifier {
     double targetCpu = 15.0;
     double targetRam = 35.0;
 
-    if (_coolingMode == 'Deep Freeze') {
+    if (resolvedMode == 'Deep Freeze') {
       stepMs = 400;
       totalDrop = 7.2;
       targetCpu = 10.0;
       targetRam = 25.0;
-    } else if (_coolingMode == 'Silent Mode') {
+    } else if (resolvedMode == 'Silent Mode') {
       stepMs = 1400;
       totalDrop = 2.4;
       targetCpu = 25.0;

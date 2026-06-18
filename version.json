@@ -1,6 +1,6 @@
 {
-  "version": "1.0.8",
-  "version_code": 9,
-  "download_url": "https://github.com/levisbarua/mobile-cooler/releases/download/v1.0.8/app-release.apk",
-  "release_notes": "OTA Update implementing dynamic cooling profiles for Smart Cool, Deep Freeze, and Silent Mode"
+  "version": "1.0.9",
+  "version_code": 10,
+  "download_url": "https://github.com/levisbarua/mobile-cooler/releases/download/v1.0.9/app-release.apk",
+  "release_notes": "OTA Update introducing automatic cooling profile switching based on device temperature."
 }

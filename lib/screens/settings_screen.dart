@@ -174,8 +174,14 @@ class SettingsScreen extends StatelessWidget {
 
                           Row(
                             children: [
-                              _buildModeCard(context, provider, 'Smart Cool', Icons.opacity, 'Balanced'),
+                              _buildModeCard(context, provider, 'Auto', Icons.autorenew, 'Smart Select'),
                               const SizedBox(width: 8),
+                              _buildModeCard(context, provider, 'Smart Cool', Icons.opacity, 'Balanced'),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
                               _buildModeCard(context, provider, 'Deep Freeze', Icons.ac_unit, 'Aggressive'),
                               const SizedBox(width: 8),
                               _buildModeCard(context, provider, 'Silent Mode', Icons.volume_mute, 'Quiet'),
