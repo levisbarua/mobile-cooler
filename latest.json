@@ -1,6 +1,6 @@
 {
-  "versionCode": 2,
-  "versionName": "1.1.0",
-  "releaseNotes": "• Initial release with auto-update support\n• Temperature monitoring & cooling\n• Performance improvements",
+  "versionCode": 1,
+  "versionName": "1.0.0",
+  "releaseNotes": "• Initial release\n• Temperature monitoring & cooling\n• Background service with notifications\n• Auto-update via GitHub Releases",
   "forceUpdate": false
 }

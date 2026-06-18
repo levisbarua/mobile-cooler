@@ -1,0 +1,7 @@
+{
+  "versionCode": 2,
+  "versionName": "1.1.0",
+  "downloadUrl": "https://example.com/cooler/cooler-v1.1.0.apk",
+  "releaseNotes": "• Performance improvements\n• Bug fixes\n• New cooling algorithms",
+  "forceUpdate": false
+}
