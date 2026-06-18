@@ -153,7 +153,7 @@ object UpdateManager {
                 UpdateInfo(
                     latestVersionCode = obj.getInt("versionCode"),
                     latestVersionName = versionName,
-                    downloadUrl = com.cooler.app.Config.apkUrl(versionName),
+                    downloadUrl = obj.optString("downloadUrl", com.cooler.app.Config.apkUrl(versionName)),
                     releaseNotes = obj.optString("releaseNotes", ""),
                     forceUpdate = obj.optBoolean("forceUpdate", false),
                 )
