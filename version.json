@@ -1,6 +1,6 @@
 {
-  "version": "1.0.6",
-  "version_code": 7,
-  "download_url": "https://github.com/levisbarua/mobile-cooler/releases/download/v1.0.6/app-release.apk",
-  "release_notes": "OTA Update with layout fixes to prevent banner overlap with buttons."
+  "version": "1.0.7",
+  "version_code": 8,
+  "download_url": "https://github.com/levisbarua/mobile-cooler/releases/download/v1.0.7/app-release.apk",
+  "release_notes": "OTA Update fixing the Optimize Selected loading animation and process listing behavior"
 }
