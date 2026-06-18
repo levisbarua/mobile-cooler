@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Cooler</string>
+    <string name="temperature_celsius">%d°C</string>
+    <string name="temperature_status_normal">Normal</string>
+    <string name="temperature_status_warm">Warm</string>
+    <string name="temperature_status_hot">Hot</string>
+    <string name="temperature_status_critical">Critical</string>
+    <string name="cooling_in_progress">Cooling in progress…</string>
+    <string name="cooling_complete">Cooling complete</string>
+    <string name="cooling_recommended">Cooling recommended</string>
+    <string name="start_cooling">Start Cooling</string>
+    <string name="stop_cooling">Stop Cooling</string>
+    <string name="running_apps">Running Apps: %d</string>
+    <string name="close_all">Close All Background Apps</string>
+    <string name="battery_temp">Battery</string>
+    <string name="cpu_temp">CPU</string>
+    <string name="no_data">No data</string>
+    <string name="channel_name">Temperature Monitor</string>
+    <string name="channel_desc">Monitors device temperature in the background</string>
+    <string name="service_notification_title">Monitoring temperature</string>
+    <string name="service_notification_text">Device is %s</string>
+    <string name="usage_stats_permission">Usage Stats Permission</string>
+    <string name="usage_stats_permission_desc">Cooler needs usage stats access to detect and close background apps.</string>
+    <string name="battery_optimization">Battery Optimization</string>
+    <string name="battery_optimization_desc">Disable battery optimization for accurate background monitoring.</string>
+    <string name="grant">Grant</string>
+    <string name="temperature_unit">°C</string>
+    <string name="update_available">Update Available</string>
+    <string name="update_checking">Checking for updates…</string>
+    <string name="update_downloading">Downloading update…</string>
+    <string name="update_install">Install Now</string>
+    <string name="update_download">Download Update</string>
+    <string name="update_latest">You have the latest version</string>
+    <string name="update_error">Update check failed</string>
+    <string name="update_release_notes">What\'s new: %s</string>
+</resources>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="cool_blue">#FF1565C0</color>
+    <color name="cool_cyan">#FF00BCD4</color>
+    <color name="warm_orange">#FFFF9800</color>
+    <color name="hot_red">#FFF44336</color>
+    <color name="critical_purple">#FF9C27B0</color>
+    <color name="background_dark">#FF0D1117</color>
+    <color name="surface_dark">#FF161B22</color>
+    <color name="on_surface">#FFE6EDF3</color>
+</resources>
