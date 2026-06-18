@@ -64,26 +64,57 @@ class DashboardScreen extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        Row(
                           children: [
-                            Text(
-                              'MOBILE COOLER',
-                              style: GoogleFonts.outfit(
-                                color: Colors.white.withOpacity(0.5),
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 2.0,
+                            // Glassmorphic App Logo
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.15),
+                                  width: 1.5,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFF00F2FE).withOpacity(0.15),
+                                    blurRadius: 8,
+                                    spreadRadius: 1,
+                                  ),
+                                ],
+                              ),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(10),
+                                child: Image.asset(
+                                  'assets/logo.png',
+                                  fit: BoxFit.cover,
+                                ),
                               ),
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Thermal Center',
-                              style: GoogleFonts.outfit(
-                                color: Colors.white,
-                                fontSize: 24,
-                                fontWeight: FontWeight.w700,
-                              ),
+                            const SizedBox(width: 12),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'MOBILE COOLER',
+                                  style: GoogleFonts.outfit(
+                                    color: Colors.white.withOpacity(0.5),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 2.0,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Thermal Center',
+                                  style: GoogleFonts.outfit(
+                                    color: Colors.white,
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
