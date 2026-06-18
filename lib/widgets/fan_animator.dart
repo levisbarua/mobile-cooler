@@ -40,7 +40,9 @@ class _FanAnimatorState extends State<FanAnimator> with SingleTickerProviderStat
 
         if (provider.isCooling) {
           // Spin based on selected cooling mode
-          if (provider.effectiveCoolingMode == 'Deep Freeze') {
+          if (provider.effectiveCoolingMode == 'Turbo Boost') {
+            speedFactor = 16.0 - (provider.coolingProgress * 10.0); // starts hyper fast (16x), slows to 6x
+          } else if (provider.effectiveCoolingMode == 'Deep Freeze') {
             speedFactor = 12.0 - (provider.coolingProgress * 7.0); // starts ultra fast (12x), slows to 5x
           } else if (provider.effectiveCoolingMode == 'Silent Mode') {
             speedFactor = 3.0 - (provider.coolingProgress * 1.8); // starts quiet (3x), slows to 1.2x

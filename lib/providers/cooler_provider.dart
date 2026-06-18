@@ -85,7 +85,9 @@ class CoolerProvider extends ChangeNotifier {
   String get coolingMode => _coolingMode;
   String get effectiveCoolingMode {
     if (_coolingMode != 'Auto') return _coolingMode;
-    if (_temperature >= _warningThreshold + 2.0) {
+    if (_temperature >= _warningThreshold + 4.0) {
+      return 'Turbo Boost';
+    } else if (_temperature >= _warningThreshold + 2.0) {
       return 'Deep Freeze';
     } else if (_temperature < 35.0) {
       return 'Silent Mode';
@@ -195,7 +197,12 @@ class CoolerProvider extends ChangeNotifier {
     double targetCpu = 15.0;
     double targetRam = 35.0;
 
-    if (resolvedMode == 'Deep Freeze') {
+    if (resolvedMode == 'Turbo Boost') {
+      stepMs = 200;
+      totalDrop = 10.0;
+      targetCpu = 5.0;
+      targetRam = 15.0;
+    } else if (resolvedMode == 'Deep Freeze') {
       stepMs = 400;
       totalDrop = 7.2;
       targetCpu = 10.0;
