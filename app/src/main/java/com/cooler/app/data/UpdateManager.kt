@@ -1,12 +1,9 @@
 package com.cooler.app.data
 
-import android.app.DownloadManager
 import android.app.NotificationManager
 import android.app.PendingIntent
-import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
@@ -22,6 +19,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.File
+import java.io.FileOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -45,17 +43,17 @@ sealed class UpdateState {
 object UpdateManager {
 
     val UPDATE_URL get() = API_URL
-    const val API_URL = com.cooler.app.Config.GITHUB_API_LATEST_RELEASE
+    val API_URL get() = com.cooler.app.Config.GITHUB_API_LATEST_RELEASE
     const val DOWNLOAD_CHANNEL_ID = "update_download"
     const val DOWNLOAD_NOTIFICATION_ID = 100
 
     private val scope = CoroutineScope(Dispatchers.IO)
     private val _updateState = MutableStateFlow<UpdateState>(UpdateState.Idle)
     val updateState: StateFlow<UpdateState> = _updateState
+    private val _downloadProgress = MutableStateFlow(0)
+    val downloadProgress: StateFlow<Int> = _downloadProgress
 
-    private var downloadId: Long = -1L
     private var pendingUpdateInfo: UpdateInfo? = null
-    private var downloadReceiver: BroadcastReceiver? = null
 
     fun checkForUpdate(context: Context) {
         _updateState.value = UpdateState.Checking
@@ -76,31 +74,58 @@ object UpdateManager {
         }
     }
 
+    fun dismissUpdate() {
+        _updateState.value = UpdateState.Idle
+        pendingUpdateInfo = null
+    }
+
     fun downloadUpdate(context: Context) {
         val info = pendingUpdateInfo ?: return
         _updateState.value = UpdateState.Downloading
+        _downloadProgress.value = 0
 
-        val apkDir = File(context.externalCacheDir, "updates").apply { mkdirs() }
-        val file = File(apkDir, "cooler-update.apk")
-        file.delete()
+        scope.launch {
+            try {
+                val cacheDir = context.externalCacheDir ?: context.cacheDir
+                val apkDir = File(cacheDir, "updates").apply { mkdirs() }
+                val file = File(apkDir, "cooler-update.apk")
 
-        val request = DownloadManager.Request(Uri.parse(info.downloadUrl)).apply {
-            setTitle("Cooler Update")
-            setDescription("Downloading ${info.latestVersionName}...")
-            setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-            setDestinationUri(Uri.fromFile(file))
-            setAllowedOverMetered(true)
-            setAllowedOverRoaming(true)
+                val url = URL(info.downloadUrl)
+                val conn = url.openConnection() as HttpURLConnection
+                conn.connectTimeout = 15000
+                conn.readTimeout = 15000
+                conn.connect()
+
+                val totalBytes = conn.contentLengthLong
+                val inputStream = conn.inputStream
+                val outputStream = FileOutputStream(file)
+                val buffer = ByteArray(8192)
+                var downloaded: Long = 0
+                var bytesRead: Int
+
+                while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+                    outputStream.write(buffer, 0, bytesRead)
+                    downloaded += bytesRead
+                    if (totalBytes > 0) {
+                        val pct = (downloaded * 100 / totalBytes).toInt()
+                        _downloadProgress.value = pct
+                    }
+                }
+
+                outputStream.close()
+                inputStream.close()
+
+                _updateState.value = UpdateState.Downloaded(Uri.fromFile(file), info)
+            } catch (e: Exception) {
+                _updateState.value = UpdateState.Error(e.message ?: "Download failed")
+            }
         }
-
-        val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-        downloadId = dm.enqueue(request)
-        registerDownloadReceiver(context)
     }
 
     fun installUpdate(context: Context) {
         val info = pendingUpdateInfo ?: return
-        val file = File(context.externalCacheDir, "updates/cooler-update.apk")
+        val cacheDir = context.externalCacheDir ?: context.cacheDir
+        val file = File(cacheDir, "updates/cooler-update.apk")
         if (!file.exists()) {
             _updateState.value = UpdateState.Error("APK file not found")
             return
@@ -124,21 +149,6 @@ object UpdateManager {
         }
         context.startActivity(intent)
         _updateState.value = UpdateState.Idle
-    }
-
-    fun getDownloadProgress(context: Context): Int {
-        if (downloadId < 0) return 0
-        val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-        val query = DownloadManager.Query().setFilterById(downloadId)
-        var progress = 0
-        dm.query(query).use { cursor ->
-            if (cursor.moveToFirst()) {
-                val downloaded = cursor.getLong(cursor.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
-                val total = cursor.getLong(cursor.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
-                if (total > 0) progress = (downloaded * 100 / total).toInt()
-            }
-        }
-        return progress
     }
 
     private suspend fun fetchUpdateInfo(): UpdateInfo? {
@@ -173,7 +183,7 @@ object UpdateManager {
                 for (i in 0 until assets.length()) {
                     val asset = assets.getJSONObject(i)
                     val name = asset.getString("name")
-                    if (name == "app-release.apk") {
+                    if (name == "app-release.apk" || name == "app-debug.apk") {
                         downloadUrl = asset.getString("browser_download_url")
                     }
                     if (name == "latest.json") {
@@ -260,23 +270,4 @@ object UpdateManager {
         nm.notify(DOWNLOAD_NOTIFICATION_ID, notification)
     }
 
-    private fun registerDownloadReceiver(context: Context) {
-        downloadReceiver?.let { context.unregisterReceiver(it) }
-        downloadReceiver = object : BroadcastReceiver() {
-            override fun onReceive(ctx: Context, intent: Intent) {
-                val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
-                if (id == downloadId) {
-                    val info = pendingUpdateInfo
-                    if (info != null) {
-                        val file = File(ctx.externalCacheDir, "updates/cooler-update.apk")
-                        _updateState.value = UpdateState.Downloaded(Uri.fromFile(file), info)
-                    }
-                }
-            }
-        }
-        context.registerReceiver(
-            downloadReceiver,
-            IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE),
-        )
-    }
 }

@@ -37,7 +37,11 @@ object TemperatureReader {
     private const val THERMAL_BASE_PATH = "/sys/class/thermal"
 
     fun readBatteryTemperature(context: Context): Float {
-        val intent = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED), Context.RECEIVER_EXPORTED)
+            } else {
+                context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+            }
         if (intent != null) {
             try {
                 val temp = intent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0)

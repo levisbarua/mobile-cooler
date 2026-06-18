@@ -74,6 +74,8 @@ import com.cooler.app.data.TemperatureReader
 import com.cooler.app.data.UpdateManager
 import com.cooler.app.data.UpdateState
 import com.cooler.app.service.TemperatureService
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
 import com.cooler.app.ui.components.TemperatureCard
 import com.cooler.app.ui.components.ThermometerGauge
 import com.cooler.app.ui.theme.CoolCyan
@@ -92,6 +94,7 @@ fun HomeScreen() {
     val temp by TemperatureService.currentTemp.collectAsState()
     val thermalStatus by TemperatureService.thermalStatus.collectAsState()
     val updateState by UpdateManager.updateState.collectAsState()
+    val downloadProgress by UpdateManager.downloadProgress.collectAsState()
 
     var batteryTemp by remember { mutableStateOf(0f) }
     var cpuTemp by remember { mutableStateOf(0f) }
@@ -99,8 +102,6 @@ fun HomeScreen() {
     var isCooling by remember { mutableStateOf(false) }
     var coolingResult by remember { mutableStateOf<OptimizationResult?>(null) }
     var showCoolingEffect by remember { mutableStateOf(false) }
-    var downloadProgress by remember { mutableIntStateOf(0) }
-
     val tempToUse = if (temp > 0f) temp else batteryTemp
     val level = TemperatureLevel.fromCelsius(tempToUse)
 
@@ -122,13 +123,46 @@ fun HomeScreen() {
         UpdateManager.checkForUpdate(context)
     }
 
-    if (updateState is UpdateState.Downloading) {
-        LaunchedEffect(updateState) {
-            while (UpdateManager.updateState.value is UpdateState.Downloading) {
-                downloadProgress = UpdateManager.getDownloadProgress(context)
-                delay(1000)
-            }
-        }
+    val updateInfo = (updateState as? UpdateState.Available)?.info
+    if (updateInfo != null) {
+        AlertDialog(
+            onDismissRequest = { UpdateManager.dismissUpdate() },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.SystemUpdate, contentDescription = null, tint = CoolCyan)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Update Available", fontWeight = FontWeight.Bold)
+                }
+            },
+            text = {
+                Column {
+                    Text("Cooler ${updateInfo.latestVersionName} is ready to install.")
+                    if (updateInfo.releaseNotes.isNotBlank()) {
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            updateInfo.releaseNotes,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = { UpdateManager.downloadUpdate(context) },
+                    colors = ButtonDefaults.buttonColors(containerColor = CoolCyan),
+                ) {
+                    Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Download")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { UpdateManager.dismissUpdate() }) {
+                    Text("Maybe Later")
+                }
+            },
+        )
     }
 
     Scaffold(
