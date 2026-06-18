@@ -44,7 +44,8 @@ sealed class UpdateState {
 
 object UpdateManager {
 
-    val UPDATE_URL get() = com.cooler.app.Config.UPDATE_JSON_URL
+    val UPDATE_URL get() = API_URL
+    const val API_URL = com.cooler.app.Config.GITHUB_API_LATEST_RELEASE
     const val DOWNLOAD_CHANNEL_ID = "update_download"
     const val DOWNLOAD_NOTIFICATION_ID = 100
 
@@ -143,24 +144,74 @@ object UpdateManager {
     private suspend fun fetchUpdateInfo(): UpdateInfo? {
         return withContext(Dispatchers.IO) {
             try {
-                val url = URL(UPDATE_URL)
+                val url = URL(API_URL)
                 val conn = url.openConnection() as HttpURLConnection
+                conn.setRequestProperty("Accept", "application/vnd.github.v3+json")
                 conn.connectTimeout = 10000
                 conn.readTimeout = 10000
                 val json = conn.inputStream.bufferedReader().readText()
-                val obj = JSONObject(json)
-                val versionName = obj.getString("versionName")
+                val release = JSONObject(json)
+
+                val tagName = release.getString("tag_name")
+                val versionName = tagName.removePrefix("v")
+                val body = release.optString("body", "")
+
+                var versionCode = 0
+                val lines = body.split("\n")
+                for (line in lines) {
+                    val trimmed = line.trim()
+                    if (trimmed.startsWith("vc=")) {
+                        versionCode = trimmed.removePrefix("vc=").trim().toIntOrNull() ?: 0
+                        break
+                    }
+                }
+                if (versionCode == 0) versionCode = parseVersionCode(versionName)
+
+                val assets = release.getJSONArray("assets")
+                var downloadUrl = ""
+                var releaseNotes = body
+                for (i in 0 until assets.length()) {
+                    val asset = assets.getJSONObject(i)
+                    val name = asset.getString("name")
+                    if (name == "app-release.apk") {
+                        downloadUrl = asset.getString("browser_download_url")
+                    }
+                    if (name == "latest.json") {
+                        val noteUrl = asset.getString("browser_download_url")
+                        try {
+                            val noteConn = URL(noteUrl).openConnection() as HttpURLConnection
+                            noteConn.connectTimeout = 5000
+                            noteConn.readTimeout = 5000
+                            val noteJson = noteConn.inputStream.bufferedReader().readText()
+                            val noteObj = JSONObject(noteJson)
+                            if (noteObj.has("releaseNotes")) {
+                                releaseNotes = noteObj.getString("releaseNotes")
+                            }
+                        } catch (_: Exception) {}
+                    }
+                }
+
                 UpdateInfo(
-                    latestVersionCode = obj.getInt("versionCode"),
+                    latestVersionCode = versionCode,
                     latestVersionName = versionName,
-                    downloadUrl = obj.optString("downloadUrl", com.cooler.app.Config.apkUrl(versionName)),
-                    releaseNotes = obj.optString("releaseNotes", ""),
-                    forceUpdate = obj.optBoolean("forceUpdate", false),
+                    downloadUrl = downloadUrl,
+                    releaseNotes = releaseNotes,
+                    forceUpdate = false,
                 )
             } catch (_: Exception) {
                 null
             }
         }
+    }
+
+    private fun parseVersionCode(versionName: String): Int {
+        val parts = versionName.split(".")
+        var code = 0
+        for (part in parts) {
+            val num = part.toIntOrNull() ?: return 0
+            code = code * 100 + num
+        }
+        return code
     }
 
     private fun getCurrentVersionCode(context: Context): Int {

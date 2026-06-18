@@ -4,6 +4,5 @@ object Config {
     const val GITHUB_OWNER = "levisbarua"
     const val GITHUB_REPO = "cooler"
 
-    val UPDATE_JSON_URL get() = "https://raw.githubusercontent.com/$GITHUB_OWNER/$GITHUB_REPO/main/latest.json"
-    fun apkUrl(versionName: String) = "https://github.com/$GITHUB_OWNER/$GITHUB_REPO/releases/download/v$versionName/app-release.apk"
+    val GITHUB_API_LATEST_RELEASE get() = "https://api.github.com/repos/$GITHUB_OWNER/$GITHUB_REPO/releases/latest"
 }
