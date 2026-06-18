@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:battery_plus/battery_plus.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../providers/cooler_provider.dart';
 import '../widgets/glass_card.dart';
@@ -435,6 +436,25 @@ class DashboardScreen extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 20),
+                    Center(
+                      child: FutureBuilder<PackageInfo>(
+                        future: PackageInfo.fromPlatform(),
+                        builder: (context, snapshot) {
+                          if (snapshot.hasData) {
+                            return Text(
+                              'v${snapshot.data!.version} (Build ${snapshot.data!.buildNumber})',
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.25),
+                                fontSize: 11,
+                                letterSpacing: 0.5,
+                              ),
+                            );
+                          }
+                          return const SizedBox.shrink();
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 10),
                   ],
                 ),
               ),

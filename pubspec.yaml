@@ -41,6 +41,9 @@ dependencies:
   battery_plus: ^7.0.0
   device_info_plus: ^13.1.0
   screen_brightness: ^2.1.11
+  package_info_plus: ^10.1.0
+  http: ^1.2.2
+  path_provider: ^2.1.4
 
 dev_dependencies:
   flutter_test:
