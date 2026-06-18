@@ -181,55 +181,7 @@ class SettingsScreen extends StatelessWidget {
                               _buildModeCard(context, provider, 'Silent Mode', Icons.volume_mute, 'Quiet'),
                             ],
                           ),
-                          const SizedBox(height: 25),
-
-                          // Live status console logs
-                          const Text(
-                            'THERMAL AUDIT LOGS',
-                            style: TextStyle(
-                              color: Colors.cyanAccent,
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.5,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-
-                          Container(
-                            height: 200,
-                            width: double.infinity,
-                            decoration: BoxDecoration(
-                              color: Colors.black.withOpacity(0.4),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: Colors.white.withOpacity(0.06)),
-                            ),
-                            child: provider.coolingLogs.isEmpty
-                                ? const Center(
-                                    child: Text(
-                                      'No activities logged yet.',
-                                      style: TextStyle(color: Colors.white30, fontSize: 12),
-                                    ),
-                                  )
-                                : ListView.builder(
-                                    itemCount: provider.coolingLogs.length,
-                                    physics: const BouncingScrollPhysics(),
-                                    padding: const EdgeInsets.all(15),
-                                    itemBuilder: (context, index) {
-                                      return Padding(
-                                        padding: const EdgeInsets.only(bottom: 8.0),
-                                        child: Text(
-                                          provider.coolingLogs[index],
-                                          style: GoogleFonts.shareTechMono(
-                                            color: Colors.greenAccent.withOpacity(0.85),
-                                            fontSize: 12,
-                                            height: 1.3,
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                          ),
-                          const SizedBox(height: 30),
+                          const SizedBox(height: 10),
                         ],
                       ),
                     ),
