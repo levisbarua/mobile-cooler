@@ -1,6 +1,6 @@
 {
-  "version": "1.0.4",
-  "version_code": 5,
-  "download_url": "https://github.com/levisbarua/mobile-cooler/releases/download/v1.0.4/app-release.apk",
-  "release_notes": "OTA Update with integrated glassmorphic app logo in the dashboard screen."
+  "version": "1.0.5",
+  "version_code": 6,
+  "download_url": "https://github.com/levisbarua/mobile-cooler/releases/download/v1.0.5/app-release.apk",
+  "release_notes": "OTA Update with updated home screen launcher icon and glassmorphic logo."
 }
