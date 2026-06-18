@@ -108,37 +108,61 @@ class UpdateService extends ChangeNotifier {
       
       final completer = Completer<void>();
 
-      response.stream.listen(
-        (chunk) {
+      late StreamSubscription<List<int>> subscription;
+      subscription = response.stream.listen(
+        (chunk) async {
           sink.add(chunk);
           downloadedBytes += chunk.length;
           if (totalBytes > 0) {
             _downloadProgress = downloadedBytes / totalBytes;
             _statusText = 'Downloading... ${(_downloadProgress * 100).toInt()}%';
             notifyListeners();
+
+            if (downloadedBytes >= totalBytes) {
+              await subscription.cancel();
+              if (!completer.isCompleted) {
+                try {
+                  await sink.close();
+                  client.close();
+                  _downloadedApkPath = savePath;
+                  _isDownloading = false;
+                  _isReadyToInstall = true;
+                  _downloadProgress = 1.0;
+                  _statusText = 'Update ready to install!';
+                  notifyListeners();
+                  completer.complete();
+                } catch (e) {
+                  completer.completeError(e);
+                }
+              }
+            }
           }
         },
         onDone: () async {
-          try {
-            await sink.close();
-            client.close();
-            _downloadedApkPath = savePath;
-            _isDownloading = false;
-            _isReadyToInstall = true;
-            _downloadProgress = 1.0;
-            _statusText = 'Update ready to install!';
-            notifyListeners();
-            completer.complete();
-          } catch (e) {
-            completer.completeError(e);
+          if (!completer.isCompleted) {
+            try {
+              await sink.close();
+              client.close();
+              _downloadedApkPath = savePath;
+              _isDownloading = false;
+              _isReadyToInstall = true;
+              _downloadProgress = 1.0;
+              _statusText = 'Update ready to install!';
+              notifyListeners();
+              completer.complete();
+            } catch (e) {
+              completer.completeError(e);
+            }
           }
         },
         onError: (e) async {
-          try {
-            await sink.close();
-            client.close();
-          } catch (_) {}
-          completer.completeError(e);
+          if (!completer.isCompleted) {
+            try {
+              await sink.close();
+              client.close();
+            } catch (_) {}
+            completer.completeError(e);
+          }
         },
         cancelOnError: true,
       );
