@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -92,19 +93,22 @@ class UpdateService extends ChangeNotifier {
       final dir = await getExternalStorageDirectory() ?? await getApplicationDocumentsDirectory();
       final savePath = '${dir.path}/cooler_update.apk';
 
-      // Delete old file if exists
       final file = File(savePath);
-      if (await file.exists()) await file.delete();
+      if (await file.exists()) {
+        await file.delete();
+      }
 
-      // Stream download with progress
+      final client = http.Client();
       final request = http.Request('GET', Uri.parse(_updateInfo!.downloadUrl));
-      final response = await request.send();
+      final response = await client.send(request);
 
       final totalBytes = response.contentLength ?? 0;
       int downloadedBytes = 0;
-
       final sink = file.openWrite();
-      await response.stream.listen(
+      
+      final completer = Completer<void>();
+
+      response.stream.listen(
         (chunk) {
           sink.add(chunk);
           downloadedBytes += chunk.length;
@@ -115,27 +119,35 @@ class UpdateService extends ChangeNotifier {
           }
         },
         onDone: () async {
-          await sink.close();
-          _downloadedApkPath = savePath;
-          _isDownloading = false;
-          _isReadyToInstall = true;
-          _downloadProgress = 1.0;
-          _statusText = 'Update ready to install!';
-          notifyListeners();
+          try {
+            await sink.close();
+            client.close();
+            _downloadedApkPath = savePath;
+            _isDownloading = false;
+            _isReadyToInstall = true;
+            _downloadProgress = 1.0;
+            _statusText = 'Update ready to install!';
+            notifyListeners();
+            completer.complete();
+          } catch (e) {
+            completer.completeError(e);
+          }
         },
         onError: (e) async {
-          await sink.close();
-          _isDownloading = false;
-          _statusText = 'Download failed. Try again.';
-          if (kDebugMode) print('Download error: $e');
-          notifyListeners();
+          try {
+            await sink.close();
+            client.close();
+          } catch (_) {}
+          completer.completeError(e);
         },
         cancelOnError: true,
-      ).asFuture();
+      );
+
+      await completer.future;
     } catch (e) {
       _isDownloading = false;
+      _isReadyToInstall = false;
       _statusText = 'Download failed: $e';
-      if (kDebugMode) print('Download exception: $e');
       notifyListeners();
     }
   }

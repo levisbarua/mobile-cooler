@@ -31,8 +31,13 @@ class MainActivity : FlutterActivity() {
                 "installApk" -> {
                     val path = call.argument<String>("path")
                     if (path != null) {
-                        installApk(path)
-                        result.success(true)
+                        try {
+                            installApk(path)
+                            result.success(true)
+                        } catch (e: Exception) {
+                            android.util.Log.e("ThermalUpdate", "Install failed", e)
+                            result.error("INSTALL_FAILED", e.message, e.toString())
+                        }
                     } else {
                         result.error("NO_PATH", "APK path not provided", null)
                     }
