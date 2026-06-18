@@ -6,7 +6,7 @@ import 'package:battery_plus/battery_plus.dart';
 import '../providers/cooler_provider.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/fan_animator.dart';
-import '../widgets/temp_chart.dart';
+
 import 'optimization_screen.dart';
 import 'settings_screen.dart';
 
@@ -382,11 +382,7 @@ class DashboardScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 20),
 
-                    // Real-time Temperature graph card
-                    const GlassCard(
-                      child: TempChart(),
-                    ),
-                    const SizedBox(height: 20),
+
 
                     // Quick Navigation shortcuts
                     Row(
