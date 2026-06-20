@@ -491,24 +491,59 @@ class DashboardScreen extends StatelessWidget {
                         child: AdWidget(ad: adService.bannerAd!),
                       ),
                     Center(
-                      child: FutureBuilder<PackageInfo>(
-                        future: PackageInfo.fromPlatform(),
-                        builder: (context, snapshot) {
-                          if (snapshot.hasData) {
-                            return Text(
-                              'v${snapshot.data!.version} (Build ${snapshot.data!.buildNumber})',
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.25),
-                                fontSize: 11,
-                                letterSpacing: 0.5,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          FutureBuilder<PackageInfo>(
+                            future: PackageInfo.fromPlatform(),
+                            builder: (context, snapshot) {
+                              if (snapshot.hasData) {
+                                return Text(
+                                  'v${snapshot.data!.version} (Build ${snapshot.data!.buildNumber})',
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(0.25),
+                                    fontSize: 11,
+                                    letterSpacing: 0.5,
+                                  ),
+                                );
+                              }
+                              return const SizedBox.shrink();
+                            },
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Ads SDK - Init: ${adService.initStatus}',
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.25),
+                              fontSize: 10,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Banner: ${adService.bannerStatus} | Interstitial: ${adService.interstitialStatus}',
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.25),
+                              fontSize: 10,
+                            ),
+                          ),
+                          if (adService.lastError != null) ...[
+                            const SizedBox(height: 4),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                              child: Text(
+                                '${adService.lastError}',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Colors.redAccent.withOpacity(0.8),
+                                  fontSize: 9,
+                                ),
                               ),
-                            );
-                          }
-                          return const SizedBox.shrink();
-                        },
+                            ),
+                          ],
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 15),
                   ],
                 ),
               ),
