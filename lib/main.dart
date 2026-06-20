@@ -14,7 +14,7 @@ void main() {
       providers: [
         ChangeNotifierProvider(create: (_) => CoolerProvider()),
         ChangeNotifierProvider(create: (_) => UpdateService()),
-        ChangeNotifierProvider(create: (_) => AdService()),
+        ChangeNotifierProvider(create: (_) => AdService(), lazy: false),
       ],
       child: const MobileCoolerApp(),
     ),

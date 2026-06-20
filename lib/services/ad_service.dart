@@ -26,28 +26,32 @@ class AdService extends ChangeNotifier {
   Future<void> init() async {
     if (!_isSupportedPlatform) return;
     try {
+      print('AdService: Initializing Mobile Ads SDK...');
       await MobileAds.instance.initialize();
+      print('AdService: Mobile Ads SDK initialized successfully.');
       loadBannerAd();
       loadInterstitialAd();
     } catch (e) {
-      if (kDebugMode) print('AdMob initialization failed: $e');
+      print('AdService: AdMob initialization failed: $e');
     }
   }
 
   void loadBannerAd() {
     if (!_isSupportedPlatform) return;
     
+    print('AdService: Loading BannerAd...');
     _bannerAd = BannerAd(
       adUnitId: _bannerAdUnitId,
       size: AdSize.banner,
       request: const AdRequest(),
       listener: BannerAdListener(
         onAdLoaded: (_) {
+          print('AdService: BannerAd loaded successfully!');
           _isBannerLoaded = true;
           notifyListeners();
         },
         onAdFailedToLoad: (ad, error) {
-          if (kDebugMode) print('BannerAd failed to load: $error');
+          print('AdService: BannerAd failed to load: $error');
           ad.dispose();
           _isBannerLoaded = false;
           notifyListeners();
@@ -60,22 +64,26 @@ class AdService extends ChangeNotifier {
   void loadInterstitialAd() {
     if (!_isSupportedPlatform) return;
 
+    print('AdService: Loading InterstitialAd...');
     InterstitialAd.load(
       adUnitId: _interstitialAdUnitId,
       request: const AdRequest(),
       adLoadCallback: InterstitialAdLoadCallback(
         onAdLoaded: (ad) {
+          print('AdService: InterstitialAd loaded successfully!');
           _interstitialAd = ad;
           _isInterstitialLoaded = true;
           _interstitialLoadAttempts = 0;
           
           _interstitialAd!.fullScreenContentCallback = FullScreenContentCallback(
             onAdDismissedFullScreenContent: (ad) {
+              print('AdService: InterstitialAd dismissed.');
               ad.dispose();
               _isInterstitialLoaded = false;
               loadInterstitialAd(); // Load the next one
             },
             onAdFailedToShowFullScreenContent: (ad, error) {
+              print('AdService: InterstitialAd failed to show: $error');
               ad.dispose();
               _isInterstitialLoaded = false;
               loadInterstitialAd();
@@ -84,7 +92,7 @@ class AdService extends ChangeNotifier {
           notifyListeners();
         },
         onAdFailedToLoad: (error) {
-          if (kDebugMode) print('InterstitialAd failed to load: $error');
+          print('AdService: InterstitialAd failed to load: $error');
           _isInterstitialLoaded = false;
           _interstitialLoadAttempts++;
           if (_interstitialLoadAttempts < 3) {
@@ -99,9 +107,10 @@ class AdService extends ChangeNotifier {
   void showInterstitialAd() {
     if (!_isSupportedPlatform) return;
     if (_isInterstitialLoaded && _interstitialAd != null) {
+      print('AdService: Showing InterstitialAd...');
       _interstitialAd!.show();
     } else {
-      if (kDebugMode) print('InterstitialAd not loaded yet.');
+      print('AdService: InterstitialAd not loaded yet.');
       loadInterstitialAd(); // Force attempt load
     }
   }

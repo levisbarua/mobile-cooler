@@ -19,38 +19,37 @@ class DashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final provider = context.watch<CoolerProvider>();
+    final updateService = context.watch<UpdateService>();
+    final adService = context.watch<AdService>();
+    final showBanner = updateService.isUpdateAvailable ||
+        updateService.isDownloading ||
+        updateService.isReadyToInstall;
+    final temp = provider.temperature;
+    final isHot = temp >= provider.warningThreshold;
+    final isWarm = temp >= 35.0 && temp < provider.warningThreshold;
+    
+    Color statusColor;
+    String statusText;
+    String descriptionText;
+
+    if (isHot) {
+      statusColor = const Color(0xFFFF4B5C); // Coral Red
+      statusText = 'OVERHEATING';
+      descriptionText = 'Close background apps immediately to reduce CPU load!';
+    } else if (isWarm) {
+      statusColor = const Color(0xFFFF9F43); // Orange
+      statusText = 'WARM';
+      descriptionText = 'Device temperature rising. System optimization recommended.';
+    } else {
+      statusColor = const Color(0xFF00F2FE); // Cyan/Ice Blue
+      statusText = 'COOL & HEALTHY';
+      descriptionText = 'Your device is operating at optimal temperature.';
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFF090A15),
-      body: Consumer<CoolerProvider>(
-        builder: (context, provider, child) {
-          final updateService = context.watch<UpdateService>();
-          final adService = context.watch<AdService>();
-          final showBanner = updateService.isUpdateAvailable ||
-              updateService.isDownloading ||
-              updateService.isReadyToInstall;
-          final temp = provider.temperature;
-          final isHot = temp >= provider.warningThreshold;
-          final isWarm = temp >= 35.0 && temp < provider.warningThreshold;
-          
-          Color statusColor;
-          String statusText;
-          String descriptionText;
-
-          if (isHot) {
-            statusColor = const Color(0xFFFF4B5C); // Coral Red
-            statusText = 'OVERHEATING';
-            descriptionText = 'Close background apps immediately to reduce CPU load!';
-          } else if (isWarm) {
-            statusColor = const Color(0xFFFF9F43); // Orange
-            statusText = 'WARM';
-            descriptionText = 'Device temperature rising. System optimization recommended.';
-          } else {
-            statusColor = const Color(0xFF00F2FE); // Cyan/Ice Blue
-            statusText = 'COOL & HEALTHY';
-            descriptionText = 'Your device is operating at optimal temperature.';
-          }
-
-          return Container(
+      body: Container(
             decoration: BoxDecoration(
               gradient: RadialGradient(
                 center: const Alignment(0, -0.6),
@@ -514,9 +513,7 @@ class DashboardScreen extends StatelessWidget {
                 ),
               ),
             ),
-          );
-        },
-      ),
+          ),
     );
   }
 }
