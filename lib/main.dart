@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'providers/cooler_provider.dart';
 import 'services/update_service.dart';
+import 'services/ad_service.dart';
 import 'screens/dashboard_screen.dart';
 
 void main() {
@@ -13,6 +14,7 @@ void main() {
       providers: [
         ChangeNotifierProvider(create: (_) => CoolerProvider()),
         ChangeNotifierProvider(create: (_) => UpdateService()),
+        ChangeNotifierProvider(create: (_) => AdService()),
       ],
       child: const MobileCoolerApp(),
     ),

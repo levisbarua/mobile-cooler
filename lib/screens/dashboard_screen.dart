@@ -4,8 +4,10 @@ import 'package:provider/provider.dart';
 import 'package:battery_plus/battery_plus.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import '../providers/cooler_provider.dart';
 import '../services/update_service.dart';
+import '../services/ad_service.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/fan_animator.dart';
 
@@ -22,6 +24,7 @@ class DashboardScreen extends StatelessWidget {
       body: Consumer<CoolerProvider>(
         builder: (context, provider, child) {
           final updateService = context.watch<UpdateService>();
+          final adService = context.watch<AdService>();
           final showBanner = updateService.isUpdateAvailable ||
               updateService.isDownloading ||
               updateService.isReadyToInstall;
@@ -270,8 +273,11 @@ class DashboardScreen extends StatelessWidget {
                                       ],
                                     ),
                                     child: ElevatedButton(
-                                      onPressed: () {
-                                        provider.startCooling();
+                                      onPressed: () async {
+                                        await provider.startCooling();
+                                        if (context.mounted) {
+                                          context.read<AdService>().showInterstitialAd();
+                                        }
                                       },
                                       style: ElevatedButton.styleFrom(
                                         backgroundColor: statusColor,
@@ -477,6 +483,14 @@ class DashboardScreen extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 20),
+                    if (adService.isBannerLoaded && adService.bannerAd != null)
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 20),
+                        alignment: Alignment.center,
+                        width: adService.bannerAd!.size.width.toDouble(),
+                        height: adService.bannerAd!.size.height.toDouble(),
+                        child: AdWidget(ad: adService.bannerAd!),
+                      ),
                     Center(
                       child: FutureBuilder<PackageInfo>(
                         future: PackageInfo.fromPlatform(),
