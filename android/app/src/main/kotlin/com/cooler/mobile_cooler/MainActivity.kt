@@ -72,6 +72,9 @@ class MainActivity : FlutterActivity() {
                         result.error("FLASHLIGHT_ERROR", e.message, null)
                     }
                 }
+                "getFlashlightMaxLevel" -> {
+                    result.success(getFlashlightMaxLevel())
+                }
                 "getRingerMode" -> {
                     result.success(getRingerMode())
                 }
@@ -236,30 +239,56 @@ class MainActivity : FlutterActivity() {
         )
     }
 
+    private fun getCameraIdWithFlash(cameraManager: CameraManager): String? {
+        for (id in cameraManager.cameraIdList) {
+            try {
+                val chars = cameraManager.getCameraCharacteristics(id)
+                val hasFlash = chars.get(CameraCharacteristics.FLASH_INFO_AVAILABLE) ?: false
+                if (hasFlash) {
+                    return id
+                }
+            } catch (e: Exception) {
+                // Ignore
+            }
+        }
+        return if (cameraManager.cameraIdList.isNotEmpty()) cameraManager.cameraIdList[0] else null
+    }
+
+    private fun getFlashlightMaxLevel(): Int {
+        val cameraManager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
+        val cameraId = getCameraIdWithFlash(cameraManager) ?: return 1
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            try {
+                val chars = cameraManager.getCameraCharacteristics(cameraId)
+                return chars.get(CameraCharacteristics.FLASH_INFO_STRENGTH_MAXIMUM_LEVEL) ?: 1
+            } catch (e: Exception) {
+                return 1
+            }
+        }
+        return 1
+    }
+
     private fun toggleFlashlight(enable: Boolean, level: Double) {
         val cameraManager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
-        val cameraIdList = cameraManager.cameraIdList
-        if (cameraIdList.isNotEmpty()) {
-            val cameraId = cameraIdList[0]
-            if (!enable) {
-                cameraManager.setTorchMode(cameraId, false)
-            } else {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    try {
-                        val chars = cameraManager.getCameraCharacteristics(cameraId)
-                        val maxLevel = chars.get(CameraCharacteristics.FLASH_INFO_STRENGTH_MAXIMUM_LEVEL) ?: 1
-                        if (maxLevel > 1) {
-                            val targetStrength = (level * maxLevel).toInt().coerceAtLeast(1).coerceAtMost(maxLevel)
-                            cameraManager.turnOnTorchWithStrengthLevel(cameraId, targetStrength)
-                        } else {
-                            cameraManager.setTorchMode(cameraId, true)
-                        }
-                    } catch (e: Exception) {
+        val cameraId = getCameraIdWithFlash(cameraManager) ?: return
+        if (!enable) {
+            cameraManager.setTorchMode(cameraId, false)
+        } else {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                try {
+                    val chars = cameraManager.getCameraCharacteristics(cameraId)
+                    val maxLevel = chars.get(CameraCharacteristics.FLASH_INFO_STRENGTH_MAXIMUM_LEVEL) ?: 1
+                    if (maxLevel > 1) {
+                        val targetStrength = (level * maxLevel).toInt().coerceAtLeast(1).coerceAtMost(maxLevel)
+                        cameraManager.turnOnTorchWithStrengthLevel(cameraId, targetStrength)
+                    } else {
                         cameraManager.setTorchMode(cameraId, true)
                     }
-                } else {
+                } catch (e: Exception) {
                     cameraManager.setTorchMode(cameraId, true)
                 }
+            } else {
+                cameraManager.setTorchMode(cameraId, true)
             }
         }
     }

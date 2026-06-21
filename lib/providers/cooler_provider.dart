@@ -89,6 +89,7 @@ class CoolerProvider extends ChangeNotifier {
   // Device Hardware Controls state
   bool _flashlightActive = false;
   double _flashlightLevel = 1.0;
+  int _flashlightMaxLevel = 1;
   int _ringerMode = 2; // AudioManager.RINGER_MODE_NORMAL = 2
   double _junkSizeMB = 45.1;
   double _tempOffset = 0.0;
@@ -149,6 +150,8 @@ class CoolerProvider extends ChangeNotifier {
   double get flashlightLevel => _flashlightLevel;
   int get ringerMode => _ringerMode;
   double get junkSizeMB => _junkSizeMB;
+  int get flashlightMaxLevel => _flashlightMaxLevel;
+  bool get isFlashlightLevelSupported => _flashlightMaxLevel > 1;
 
   CoolerProvider() {
     _loadSettings();
@@ -270,6 +273,13 @@ class CoolerProvider extends ChangeNotifier {
       final int? mode = await _channel.invokeMethod('getRingerMode');
       if (mode != null) {
         _ringerMode = mode;
+      }
+    } catch (_) {}
+
+    try {
+      final int? maxLvl = await _channel.invokeMethod('getFlashlightMaxLevel');
+      if (maxLvl != null) {
+        _flashlightMaxLevel = maxLvl;
       }
     } catch (_) {}
 

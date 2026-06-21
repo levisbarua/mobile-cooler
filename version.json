@@ -1,6 +1,6 @@
 {
-  "version": "1.2.5",
-  "version_code": 17,
-  "download_url": "https://tmpfiles.org/dl/wKwlow6CApJa/app-release.apk",
-  "release_notes": "OTA Update adding Real Junk Cleaner, Speed Booster, Flashlight Level Control, and Physical Cooling Tips."
+  "version": "1.2.6",
+  "version_code": 18,
+  "download_url": "https://tmpfiles.org/dl/wAwpo66jI6Pw/app-release.apk",
+  "release_notes": "OTA Update adding Flashlight hardware level capability check and fallback support warning."
 }

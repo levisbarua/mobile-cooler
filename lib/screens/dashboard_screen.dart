@@ -699,31 +699,43 @@ class DashboardScreen extends StatelessWidget {
                                 ),
                                 if (provider.flashlightActive) ...[
                                   const SizedBox(height: 10),
-                                  GestureDetector(
-                                    onTap: () {},
-                                    child: SliderTheme(
-                                      data: SliderThemeData(
-                                        trackHeight: 2,
-                                        activeTrackColor: const Color(0xFF00F2FE),
-                                        inactiveTrackColor: Colors.white10,
-                                        thumbColor: const Color(0xFF00F2FE),
-                                        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-                                        overlayShape: const RoundSliderOverlayShape(overlayRadius: 10),
-                                      ),
-                                      child: Slider(
-                                        value: provider.flashlightLevel,
-                                        min: 0.1,
-                                        max: 1.0,
-                                        onChanged: (val) {
-                                          provider.setFlashlightLevel(val);
-                                        },
+                                  if (provider.isFlashlightLevelSupported) ...[
+                                    GestureDetector(
+                                      onTap: () {},
+                                      child: SliderTheme(
+                                        data: SliderThemeData(
+                                          trackHeight: 2,
+                                          activeTrackColor: const Color(0xFF00F2FE),
+                                          inactiveTrackColor: Colors.white10,
+                                          thumbColor: const Color(0xFF00F2FE),
+                                          thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                                          overlayShape: const RoundSliderOverlayShape(overlayRadius: 10),
+                                        ),
+                                        child: Slider(
+                                          value: provider.flashlightLevel,
+                                          min: 0.1,
+                                          max: 1.0,
+                                          onChanged: (val) {
+                                            provider.setFlashlightLevel(val);
+                                          },
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                  Text(
-                                    'Intensity: ${(provider.flashlightLevel * 100).toInt()}%',
-                                    style: const TextStyle(color: Colors.white38, fontSize: 9, fontWeight: FontWeight.bold),
-                                  ),
+                                    Text(
+                                      'Intensity: ${(provider.flashlightLevel * 100).toInt()}%',
+                                      style: const TextStyle(color: Colors.white38, fontSize: 9, fontWeight: FontWeight.bold),
+                                    ),
+                                  ] else ...[
+                                    Text(
+                                      'Intensity control not supported by your hardware',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        color: Colors.white.withValues(alpha: 0.35),
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.normal,
+                                      ),
+                                    ),
+                                  ],
                                 ],
                               ],
                             ),
