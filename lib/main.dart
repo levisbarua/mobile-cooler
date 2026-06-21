@@ -113,10 +113,10 @@ class _UpdateBanner extends StatelessWidget {
           colors: [Color(0xFF0F2027), Color(0xFF203A43), Color(0xFF2C5364)],
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.cyanAccent.withOpacity(0.4), width: 1),
+        border: Border.all(color: Colors.cyanAccent.withValues(alpha: 0.4), width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.cyan.withOpacity(0.2),
+            color: Colors.cyan.withValues(alpha: 0.2),
             blurRadius: 20,
             spreadRadius: 2,
           ),
@@ -152,7 +152,7 @@ class _UpdateBanner extends StatelessWidget {
                         Text(
                           'v${info.version} — ${info.releaseNotes}',
                           style: TextStyle(
-                            color: Colors.white.withOpacity(0.6),
+                            color: Colors.white.withValues(alpha: 0.6),
                             fontSize: 11,
                           ),
                           maxLines: 1,
@@ -184,7 +184,7 @@ class _UpdateBanner extends StatelessWidget {
                 borderRadius: BorderRadius.circular(4),
                 child: LinearProgressIndicator(
                   value: updateService.downloadProgress,
-                  backgroundColor: Colors.white.withOpacity(0.1),
+                  backgroundColor: Colors.white.withValues(alpha: 0.1),
                   valueColor: const AlwaysStoppedAnimation<Color>(Colors.cyanAccent),
                   minHeight: 4,
                 ),

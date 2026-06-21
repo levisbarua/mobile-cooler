@@ -1,6 +1,9 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../widgets/mock_interstitial_ad.dart';
 
 class AdService extends ChangeNotifier {
   BannerAd? _bannerAd;
@@ -15,6 +18,11 @@ class AdService extends ChangeNotifier {
   String _interstitialStatus = 'Not loaded';
   String? _lastError;
 
+  // Simulated ads and Pro preferences
+  bool _useSimulatedAds = false;
+  bool _isMockAd = false;
+  bool _isPro = false;
+
   BannerAd? get bannerAd => _bannerAd;
   bool get isBannerLoaded => _isBannerLoaded;
   bool get isInterstitialLoaded => _isInterstitialLoaded;
@@ -22,66 +30,208 @@ class AdService extends ChangeNotifier {
   String get bannerStatus => _bannerStatus;
   String get interstitialStatus => _interstitialStatus;
   String? get lastError => _lastError;
+  bool get useSimulatedAds => _useSimulatedAds;
+  bool get isMockAd => _isMockAd;
+  bool get isPro => _isPro;
 
   // Test Ad Unit IDs from Google
-  static const String _bannerAdUnitId = 'ca-app-pub-3940256099942544/6300978111';
-  static const String _interstitialAdUnitId = 'ca-app-pub-3940256099942544/1033173712';
+  static String get bannerAdUnitId {
+    if (!kIsWeb && Platform.isAndroid) {
+      return 'ca-app-pub-3940256099942544/6300978111';
+    } else if (!kIsWeb && Platform.isIOS) {
+      return 'ca-app-pub-3940256099942544/2934735716';
+    }
+    return '';
+  }
+
+  static String get interstitialAdUnitId {
+    if (!kIsWeb && Platform.isAndroid) {
+      return 'ca-app-pub-3940256099942544/1033173712';
+    } else if (!kIsWeb && Platform.isIOS) {
+      return 'ca-app-pub-3940256099942544/4411468910';
+    }
+    return '';
+  }
 
   AdService() {
-    init();
+    _loadSettingsAndInit();
   }
 
   bool get _isSupportedPlatform => !kIsWeb && (Platform.isAndroid || Platform.isIOS);
 
+  Future<void> _loadSettingsAndInit() async {
+    await loadSettings();
+    await init();
+  }
+
+  Future<void> loadSettings() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _useSimulatedAds = prefs.getBool('use_simulated_ads') ?? false;
+      _isPro = prefs.getBool('is_pro_version') ?? false;
+      _isMockAd = _useSimulatedAds || !_isSupportedPlatform;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('AdService: Error loading settings: $e');
+    }
+  }
+
+  Future<void> checkProStatus() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _isPro = prefs.getBool('is_pro_version') ?? false;
+    } catch (_) {}
+  }
+
+  void updateProStatus(bool value) {
+    _isPro = value;
+    if (_isPro) {
+      // Pro active: dispose any active ads
+      _bannerAd?.dispose();
+      _bannerAd = null;
+      _interstitialAd?.dispose();
+      _interstitialAd = null;
+      _isBannerLoaded = false;
+      _isInterstitialLoaded = false;
+      _bannerStatus = 'Not loaded (Pro)';
+      _interstitialStatus = 'Not loaded (Pro)';
+      _initStatus = 'initialized (Pro)';
+    } else {
+      // Re-initialize if Pro deactivated
+      _bannerStatus = 'Not loaded';
+      _interstitialStatus = 'Not loaded';
+      init();
+    }
+    notifyListeners();
+  }
+
+  Future<void> setUseSimulatedAds(bool value) async {
+    _useSimulatedAds = value;
+    _isMockAd = value || !_isSupportedPlatform;
+    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('use_simulated_ads', value);
+    } catch (e) {
+      debugPrint('AdService: Error saving settings: $e');
+    }
+    if (_isPro) return; // Do not load mock ads if Pro is active
+    
+    if (_isMockAd) {
+      _loadMockAds();
+    } else {
+      _isBannerLoaded = false;
+      _isInterstitialLoaded = false;
+      _bannerStatus = 'Not loaded';
+      _interstitialStatus = 'Not loaded';
+      init();
+    }
+  }
+
   Future<void> init() async {
+    await checkProStatus();
+    if (_isPro) {
+      debugPrint('AdService: Pro version active. Disabling ads initialization.');
+      _initStatus = 'initialized (Pro)';
+      _bannerStatus = 'Not loaded (Pro)';
+      _interstitialStatus = 'Not loaded (Pro)';
+      _isBannerLoaded = false;
+      _isInterstitialLoaded = false;
+      notifyListeners();
+      return;
+    }
+
+    if (_isMockAd) {
+      debugPrint('AdService: Initializing Mock Ad Service...');
+      _initStatus = 'initialized (Simulated)';
+      notifyListeners();
+      _loadMockAds();
+      return;
+    }
+
     if (!_isSupportedPlatform) {
       _initStatus = 'Unsupported Platform';
       notifyListeners();
       return;
     }
     try {
-      print('AdService: Initializing Mobile Ads SDK...');
+      debugPrint('AdService: Initializing Mobile Ads SDK...');
       _initStatus = 'Initializing...';
       notifyListeners();
       await MobileAds.instance.initialize();
-      print('AdService: Mobile Ads SDK initialized successfully.');
-      _initStatus = 'Initialized';
+      debugPrint('AdService: Mobile Ads SDK initialized successfully.');
+      _initStatus = 'initialized';
       notifyListeners();
       loadBannerAd();
       loadInterstitialAd();
     } catch (e) {
-      print('AdService: AdMob initialization failed: $e');
+      debugPrint('AdService: AdMob initialization failed: $e');
       _initStatus = 'Failed: $e';
       _lastError = 'Init: $e';
       notifyListeners();
     }
   }
 
-  void loadBannerAd() {
-    if (!_isSupportedPlatform) return;
+  void _loadMockAds() {
+    if (_isPro) return; // No mock ads if Pro active
     
-    print('AdService: Loading BannerAd...');
+    _bannerStatus = 'Loading (Mock)...';
+    _interstitialStatus = 'Loading (Mock)...';
+    notifyListeners();
+    
+    Future.delayed(const Duration(milliseconds: 600), () {
+      if (!_isMockAd || _isPro) return;
+      _isBannerLoaded = true;
+      _bannerStatus = 'Loaded (Mock)';
+      notifyListeners();
+    });
+
+    Future.delayed(const Duration(milliseconds: 1000), () {
+      if (!_isMockAd || _isPro) return;
+      _isInterstitialLoaded = true;
+      _interstitialStatus = 'Loaded (Mock)';
+      notifyListeners();
+    });
+  }
+
+  void dismissMockBanner() {
+    _isBannerLoaded = false;
+    _bannerStatus = 'Dismissed';
+    notifyListeners();
+  }
+
+  void loadBannerAd() {
+    if (_isPro || !_isSupportedPlatform || _isMockAd) return;
+    
+    debugPrint('AdService: Loading BannerAd...');
     _bannerStatus = 'Loading...';
     notifyListeners();
 
     _bannerAd = BannerAd(
-      adUnitId: _bannerAdUnitId,
+      adUnitId: bannerAdUnitId,
       size: AdSize.banner,
       request: const AdRequest(),
       listener: BannerAdListener(
         onAdLoaded: (_) {
-          print('AdService: BannerAd loaded successfully!');
+          debugPrint('AdService: BannerAd loaded successfully!');
           _isBannerLoaded = true;
           _bannerStatus = 'Loaded';
           notifyListeners();
         },
         onAdFailedToLoad: (ad, error) {
-          print('AdService: BannerAd failed to load: $error');
+          debugPrint('AdService: BannerAd failed to load: $error');
           ad.dispose();
           _isBannerLoaded = false;
           _bannerStatus = 'Failed: $error';
           _lastError = 'Banner: $error';
-          notifyListeners();
+          
+          if (error.message.contains('javascript engine') || error.message.contains('JavaScriptEngine')) {
+            debugPrint('AdService: JavaScript Engine error detected. Falling back to Simulated Ads.');
+            _isMockAd = true;
+            _loadMockAds();
+          } else {
+            notifyListeners();
+          }
         },
       ),
     );
@@ -89,18 +239,18 @@ class AdService extends ChangeNotifier {
   }
 
   void loadInterstitialAd() {
-    if (!_isSupportedPlatform) return;
+    if (_isPro || !_isSupportedPlatform || _isMockAd) return;
 
-    print('AdService: Loading InterstitialAd...');
+    debugPrint('AdService: Loading InterstitialAd...');
     _interstitialStatus = 'Loading...';
     notifyListeners();
 
     InterstitialAd.load(
-      adUnitId: _interstitialAdUnitId,
+      adUnitId: interstitialAdUnitId,
       request: const AdRequest(),
       adLoadCallback: InterstitialAdLoadCallback(
         onAdLoaded: (ad) {
-          print('AdService: InterstitialAd loaded successfully!');
+          debugPrint('AdService: InterstitialAd loaded successfully!');
           _interstitialAd = ad;
           _isInterstitialLoaded = true;
           _interstitialStatus = 'Loaded';
@@ -108,14 +258,14 @@ class AdService extends ChangeNotifier {
           
           _interstitialAd!.fullScreenContentCallback = FullScreenContentCallback(
             onAdDismissedFullScreenContent: (ad) {
-              print('AdService: InterstitialAd dismissed.');
+              debugPrint('AdService: InterstitialAd dismissed.');
               ad.dispose();
               _isInterstitialLoaded = false;
               _interstitialStatus = 'Dismissed';
               loadInterstitialAd(); // Load the next one
             },
             onAdFailedToShowFullScreenContent: (ad, error) {
-              print('AdService: InterstitialAd failed to show: $error');
+              debugPrint('AdService: InterstitialAd failed to show: $error');
               ad.dispose();
               _isInterstitialLoaded = false;
               _interstitialStatus = 'Failed to show: $error';
@@ -126,29 +276,60 @@ class AdService extends ChangeNotifier {
           notifyListeners();
         },
         onAdFailedToLoad: (error) {
-          print('AdService: InterstitialAd failed to load: $error');
+          debugPrint('AdService: InterstitialAd failed to load: $error');
           _isInterstitialLoaded = false;
           _interstitialStatus = 'Failed: $error';
           _lastError = 'Interstitial: $error';
-          _interstitialLoadAttempts++;
-          if (_interstitialLoadAttempts < 3) {
-            // Retry loading
-            loadInterstitialAd();
+          
+          if (error.message.contains('javascript engine') || error.message.contains('JavaScriptEngine')) {
+            debugPrint('AdService: JavaScript Engine error detected. Falling back to Simulated Ads.');
+            _isMockAd = true;
+            _loadMockAds();
           } else {
-            notifyListeners();
+            _interstitialLoadAttempts++;
+            if (_interstitialLoadAttempts < 3) {
+              // Retry loading
+              loadInterstitialAd();
+            } else {
+              notifyListeners();
+            }
           }
         },
       ),
     );
   }
 
-  void showInterstitialAd() {
+  void showInterstitialAd(BuildContext context) {
+    if (_isPro) {
+      debugPrint('AdService: Pro version active. Skipping interstitial ad.');
+      return;
+    }
+
+    if (_isMockAd) {
+      if (_isInterstitialLoaded) {
+        _isInterstitialLoaded = false;
+        _interstitialStatus = 'Dismissed (Mock)';
+        notifyListeners();
+        
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const MockInterstitialAdDialog(),
+        ).then((_) {
+          _loadMockAds();
+        });
+      } else {
+        debugPrint('AdService: Simulated InterstitialAd not loaded yet.');
+      }
+      return;
+    }
+
     if (!_isSupportedPlatform) return;
     if (_isInterstitialLoaded && _interstitialAd != null) {
-      print('AdService: Showing InterstitialAd...');
+      debugPrint('AdService: Showing InterstitialAd...');
       _interstitialAd!.show();
     } else {
-      print('AdService: InterstitialAd not loaded yet.');
+      debugPrint('AdService: InterstitialAd not loaded yet.');
       _interstitialStatus = 'Show attempted (Not loaded)';
       loadInterstitialAd(); // Force attempt load
     }

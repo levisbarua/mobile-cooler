@@ -6,7 +6,7 @@ import '../providers/cooler_provider.dart';
 class FanAnimator extends StatefulWidget {
   final double size;
 
-  const FanAnimator({Key? key, this.size = 180.0}) : super(key: key);
+  const FanAnimator({super.key, this.size = 180.0});
 
   @override
   State<FanAnimator> createState() => _FanAnimatorState();
@@ -88,19 +88,19 @@ class _FanAnimatorState extends State<FanAnimator> with SingleTickerProviderStat
                 shape: BoxShape.circle,
                 border: Border.all(
                   color: provider.isCooling
-                      ? Colors.cyan.withOpacity(0.3)
+                      ? Colors.cyan.withValues(alpha: 0.3)
                       : (provider.temperature > 40.0
-                          ? Colors.red.withOpacity(0.3)
-                          : Colors.blue.withOpacity(0.15)),
+                          ? Colors.red.withValues(alpha: 0.3)
+                          : Colors.blue.withValues(alpha: 0.15)),
                   width: 3,
                 ),
                 boxShadow: [
                   BoxShadow(
                     color: provider.isCooling
-                        ? Colors.cyan.withOpacity(0.25)
+                        ? Colors.cyan.withValues(alpha: 0.25)
                         : (provider.temperature > 40.0
-                            ? Colors.red.withOpacity(0.25)
-                            : Colors.blue.withOpacity(0.1)),
+                            ? Colors.red.withValues(alpha: 0.25)
+                            : Colors.blue.withValues(alpha: 0.1)),
                     blurRadius: 20,
                     spreadRadius: 2,
                   ),
@@ -170,8 +170,8 @@ class FanPainter extends CustomPainter {
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          color.withOpacity(0.95),
-          color.withOpacity(0.35),
+          color.withValues(alpha: 0.95),
+          color.withValues(alpha: 0.35),
         ],
       ).createShader(Rect.fromCircle(center: center, radius: radius))
       ..style = PaintingStyle.fill;
@@ -193,7 +193,7 @@ class FanPainter extends CustomPainter {
       
       // Add a metallic highlight ridge line on the blade
       final ridgePaint = Paint()
-        ..color = Colors.white.withOpacity(0.4)
+        ..color = Colors.white.withValues(alpha: 0.4)
         ..strokeWidth = 1.8
         ..style = PaintingStyle.stroke;
       
@@ -210,7 +210,7 @@ class FanPainter extends CustomPainter {
     
     // Core metallic cap ring
     final capPaint = Paint()
-      ..color = Colors.white.withOpacity(0.2)
+      ..color = Colors.white.withValues(alpha: 0.2)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2;
     canvas.drawCircle(center, radius * 0.22, capPaint);
@@ -235,7 +235,7 @@ class FanGrillPainter extends CustomPainter {
     final radius = size.width / 2;
 
     final grillPaint = Paint()
-      ..color = Colors.white.withOpacity(0.1)
+      ..color = Colors.white.withValues(alpha: 0.1)
       ..strokeWidth = 1.0
       ..style = PaintingStyle.stroke;
 

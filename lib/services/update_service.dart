@@ -41,7 +41,7 @@ class UpdateService extends ChangeNotifier {
   double _downloadProgress = 0.0;
   bool _isReadyToInstall = false;
   String? _downloadedApkPath;
-  String _statusText = '';
+  String _statusText = 'Idle';
 
   UpdateInfo? get updateInfo => _updateInfo;
   bool get isUpdateAvailable => _isUpdateAvailable;
@@ -50,11 +50,19 @@ class UpdateService extends ChangeNotifier {
   bool get isReadyToInstall => _isReadyToInstall;
   String get statusText => _statusText;
 
+  void _setStatus(String status) {
+    _statusText = status;
+    debugPrint('UpdateService: $status');
+    notifyListeners();
+  }
+
   /// Check GitHub for a newer version
   Future<void> checkForUpdate() async {
+    _setStatus('Checking for updates...');
     try {
       final packageInfo = await PackageInfo.fromPlatform();
       final currentBuildNumber = int.tryParse(packageInfo.buildNumber) ?? 1;
+      _setStatus('Checking... Local Build: $currentBuildNumber');
 
       final response = await http
           .get(Uri.parse(_versionUrl))
@@ -67,15 +75,15 @@ class UpdateService extends ChangeNotifier {
         if (info.versionCode > currentBuildNumber) {
           _updateInfo = info;
           _isUpdateAvailable = true;
-          _statusText = 'Update v${info.version} available!';
-          if (kDebugMode) {
-            print('Update available: ${info.version} (current: ${packageInfo.version})');
-          }
-          notifyListeners();
+          _setStatus('Update v${info.version} available! (Remote Code: ${info.versionCode}, Local Code: $currentBuildNumber)');
+        } else {
+          _setStatus('Up to date (Remote Code: ${info.versionCode}, Local Code: $currentBuildNumber)');
         }
+      } else {
+        _setStatus('Check failed: HTTP ${response.statusCode}');
       }
     } catch (e) {
-      if (kDebugMode) print('Update check failed: $e');
+      _setStatus('Check failed: $e');
     }
   }
 
@@ -86,8 +94,7 @@ class UpdateService extends ChangeNotifier {
     _isDownloading = true;
     _downloadProgress = 0.0;
     _isReadyToInstall = false;
-    _statusText = 'Downloading update...';
-    notifyListeners();
+    _setStatus('Downloading update...');
 
     try {
       final dir = await getExternalStorageDirectory() ?? await getApplicationDocumentsDirectory();
@@ -115,8 +122,7 @@ class UpdateService extends ChangeNotifier {
           downloadedBytes += chunk.length;
           if (totalBytes > 0) {
             _downloadProgress = downloadedBytes / totalBytes;
-            _statusText = 'Downloading... ${(_downloadProgress * 100).toInt()}%';
-            notifyListeners();
+            _setStatus('Downloading... ${(_downloadProgress * 100).toInt()}%');
 
             if (downloadedBytes >= totalBytes) {
               await subscription.cancel();
@@ -128,8 +134,7 @@ class UpdateService extends ChangeNotifier {
                   _isDownloading = false;
                   _isReadyToInstall = true;
                   _downloadProgress = 1.0;
-                  _statusText = 'Update ready to install!';
-                  notifyListeners();
+                  _setStatus('Update ready to install!');
                   completer.complete();
                 } catch (e) {
                   completer.completeError(e);
@@ -147,8 +152,7 @@ class UpdateService extends ChangeNotifier {
               _isDownloading = false;
               _isReadyToInstall = true;
               _downloadProgress = 1.0;
-              _statusText = 'Update ready to install!';
-              notifyListeners();
+              _setStatus('Update ready to install!');
               completer.complete();
             } catch (e) {
               completer.completeError(e);
@@ -171,8 +175,7 @@ class UpdateService extends ChangeNotifier {
     } catch (e) {
       _isDownloading = false;
       _isReadyToInstall = false;
-      _statusText = 'Download failed: $e';
-      notifyListeners();
+      _setStatus('Download failed: $e');
     }
   }
 
@@ -180,18 +183,16 @@ class UpdateService extends ChangeNotifier {
   Future<void> installUpdate() async {
     if (_downloadedApkPath == null || !_isReadyToInstall) return;
     try {
+      _setStatus('Installing update...');
       await _channel.invokeMethod('installApk', {'path': _downloadedApkPath});
     } catch (e) {
-      _statusText = 'Install failed: $e';
-      if (kDebugMode) print('Install error: $e');
-      notifyListeners();
+      _setStatus('Install failed: $e');
     }
   }
 
   void dismissUpdate() {
     _isUpdateAvailable = false;
     _isReadyToInstall = false;
-    _statusText = '';
-    notifyListeners();
+    _setStatus('Dismissed');
   }
 }

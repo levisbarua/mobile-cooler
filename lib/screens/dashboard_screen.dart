@@ -10,12 +10,14 @@ import '../services/update_service.dart';
 import '../services/ad_service.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/fan_animator.dart';
+import '../widgets/mock_banner_ad.dart';
+import '../widgets/upgrade_dialog.dart';
 
 import 'optimization_screen.dart';
 import 'settings_screen.dart';
 
 class DashboardScreen extends StatelessWidget {
-  const DashboardScreen({Key? key}) : super(key: key);
+  const DashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -55,7 +57,7 @@ class DashboardScreen extends StatelessWidget {
                 center: const Alignment(0, -0.6),
                 radius: 1.4,
                 colors: [
-                  statusColor.withOpacity(0.08),
+                  statusColor.withValues(alpha: 0.08),
                   const Color(0xFF090A15),
                 ],
               ),
@@ -85,12 +87,12 @@ class DashboardScreen extends StatelessWidget {
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
-                                  color: Colors.white.withOpacity(0.15),
+                                  color: Colors.white.withValues(alpha: 0.15),
                                   width: 1.5,
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: const Color(0xFF00F2FE).withOpacity(0.15),
+                                    color: const Color(0xFF00F2FE).withValues(alpha: 0.15),
                                     blurRadius: 8,
                                     spreadRadius: 1,
                                   ),
@@ -111,20 +113,52 @@ class DashboardScreen extends StatelessWidget {
                                 Text(
                                   'MOBILE COOLER',
                                   style: GoogleFonts.outfit(
-                                    color: Colors.white.withOpacity(0.5),
+                                    color: Colors.white.withValues(alpha: 0.5),
                                     fontSize: 12,
                                     fontWeight: FontWeight.bold,
                                     letterSpacing: 2.0,
                                   ),
                                 ),
                                 const SizedBox(height: 2),
-                                Text(
-                                  'Thermal Center',
-                                  style: GoogleFonts.outfit(
-                                    color: Colors.white,
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.w700,
-                                  ),
+                                Row(
+                                  children: [
+                                    Text(
+                                      'Thermal Center',
+                                      style: GoogleFonts.outfit(
+                                        color: Colors.white,
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    if (provider.isPro) ...[
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          gradient: const LinearGradient(
+                                            colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                                          ),
+                                          borderRadius: BorderRadius.circular(6),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: const Color(0xFFFFD700).withValues(alpha: 0.35),
+                                              blurRadius: 8,
+                                              spreadRadius: 1,
+                                            ),
+                                          ],
+                                        ),
+                                        child: Text(
+                                          'PRO',
+                                          style: GoogleFonts.outfit(
+                                            color: Colors.black,
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.w900,
+                                            letterSpacing: 0.5,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
                                 ),
                               ],
                             ),
@@ -139,7 +173,7 @@ class DashboardScreen extends StatelessWidget {
                               },
                               icon: Icon(
                                 provider.isStressing ? Icons.flash_on : Icons.flash_off,
-                                color: provider.isStressing ? Colors.orangeAccent : Colors.white.withOpacity(0.4),
+                                color: provider.isStressing ? Colors.orangeAccent : Colors.white.withValues(alpha: 0.4),
                               ),
                               tooltip: 'Toggle CPU Stress Test Simulation',
                             ),
@@ -185,9 +219,9 @@ class DashboardScreen extends StatelessWidget {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                               decoration: BoxDecoration(
-                                color: statusColor.withOpacity(0.15),
+                                color: statusColor.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: statusColor.withOpacity(0.4), width: 1),
+                                border: Border.all(color: statusColor.withValues(alpha: 0.4), width: 1),
                               ),
                               child: Text(
                                 statusText,
@@ -208,7 +242,7 @@ class DashboardScreen extends StatelessWidget {
                                 provider.isCooling ? provider.coolingStepText : descriptionText,
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
-                                  color: Colors.white.withOpacity(0.7),
+                                  color: Colors.white.withValues(alpha: 0.7),
                                   fontSize: 13,
                                   height: 1.4,
                                 ),
@@ -229,7 +263,7 @@ class DashboardScreen extends StatelessWidget {
                                             children: [
                                               // Progress track
                                               Container(
-                                                color: Colors.cyan.withOpacity(0.12),
+                                                color: Colors.cyan.withValues(alpha: 0.12),
                                               ),
                                               // Progress bar
                                               FractionallySizedBox(
@@ -265,7 +299,7 @@ class DashboardScreen extends StatelessWidget {
                                       borderRadius: BorderRadius.circular(26),
                                       boxShadow: [
                                         BoxShadow(
-                                          color: statusColor.withOpacity(0.35),
+                                          color: statusColor.withValues(alpha: 0.35),
                                           blurRadius: 18,
                                           offset: const Offset(0, 4),
                                         ),
@@ -275,7 +309,7 @@ class DashboardScreen extends StatelessWidget {
                                       onPressed: () async {
                                         await provider.startCooling();
                                         if (context.mounted) {
-                                          context.read<AdService>().showInterstitialAd();
+                                          context.read<AdService>().showInterstitialAd(context);
                                         }
                                       },
                                       style: ElevatedButton.styleFrom(
@@ -331,7 +365,7 @@ class DashboardScreen extends StatelessWidget {
                                   borderRadius: BorderRadius.circular(3),
                                   child: LinearProgressIndicator(
                                     value: provider.cpuUsage / 100,
-                                    backgroundColor: Colors.white.withOpacity(0.08),
+                                    backgroundColor: Colors.white.withValues(alpha: 0.08),
                                     valueColor: AlwaysStoppedAnimation<Color>(
                                       provider.cpuUsage > 80 ? Colors.redAccent : Colors.purpleAccent,
                                     ),
@@ -368,7 +402,7 @@ class DashboardScreen extends StatelessWidget {
                                   borderRadius: BorderRadius.circular(3),
                                   child: LinearProgressIndicator(
                                     value: provider.ramUsage / 100,
-                                    backgroundColor: Colors.white.withOpacity(0.08),
+                                    backgroundColor: Colors.white.withValues(alpha: 0.08),
                                     valueColor: const AlwaysStoppedAnimation<Color>(Colors.orangeAccent),
                                     minHeight: 4,
                                   ),
@@ -402,7 +436,7 @@ class DashboardScreen extends StatelessWidget {
                                 children: [
                                   Text(
                                     'Battery Level',
-                                    style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 11),
+                                    style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 11),
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
@@ -416,7 +450,7 @@ class DashboardScreen extends StatelessWidget {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
-                              color: Colors.tealAccent.withOpacity(0.12),
+                              color: Colors.tealAccent.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: const Text(
@@ -429,7 +463,58 @@ class DashboardScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 20),
 
-
+                    // Upgrade to Pro Dashboard Banner
+                    if (!provider.isPro) ...[
+                      GestureDetector(
+                        onTap: () => UpgradeDialog.show(context),
+                        child: GlassCard(
+                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+                          borderColor: const Color(0xFFFFD700).withValues(alpha: 0.35),
+                          gradientColors: [
+                            const Color(0xFF1D1B0F).withValues(alpha: 0.7),
+                            const Color(0xFF090A15).withValues(alpha: 0.9),
+                          ],
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFFD700).withValues(alpha: 0.15),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.workspace_premium_rounded, color: Color(0xFFFFD700), size: 24),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Upgrade to Premium Pro',
+                                      style: GoogleFonts.outfit(
+                                        color: Colors.white,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'Remove ads, unlock background auto-cooling and turbo speeds!',
+                                      style: TextStyle(
+                                        color: Colors.white.withValues(alpha: 0.5),
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const Icon(Icons.arrow_forward_ios, color: Color(0xFFFFD700), size: 14),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
 
                     // Quick Navigation shortcuts
                     Row(
@@ -443,13 +528,13 @@ class DashboardScreen extends StatelessWidget {
                               );
                             },
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white.withOpacity(0.05),
+                              backgroundColor: Colors.white.withValues(alpha: 0.05),
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(vertical: 14),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(16),
                               ),
-                              side: BorderSide(color: Colors.white.withOpacity(0.1), width: 1),
+                              side: BorderSide(color: Colors.white.withValues(alpha: 0.1), width: 1),
                               elevation: 0,
                             ),
                             icon: const Icon(Icons.bolt, size: 18, color: Colors.cyanAccent),
@@ -466,13 +551,13 @@ class DashboardScreen extends StatelessWidget {
                               );
                             },
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white.withOpacity(0.05),
+                              backgroundColor: Colors.white.withValues(alpha: 0.05),
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(vertical: 14),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(16),
                               ),
-                              side: BorderSide(color: Colors.white.withOpacity(0.1), width: 1),
+                              side: BorderSide(color: Colors.white.withValues(alpha: 0.1), width: 1),
                               elevation: 0,
                             ),
                             icon: const Icon(Icons.shield_outlined, size: 18, color: Colors.orangeAccent),
@@ -482,7 +567,13 @@ class DashboardScreen extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 20),
-                    if (adService.isBannerLoaded && adService.bannerAd != null)
+                    if (adService.isMockAd && adService.isBannerLoaded)
+                      MockBannerAd(
+                        onDismiss: () {
+                          adService.dismissMockBanner();
+                        },
+                      )
+                    else if (adService.isBannerLoaded && adService.bannerAd != null)
                       Container(
                         margin: const EdgeInsets.only(bottom: 20),
                         alignment: Alignment.center,
@@ -501,7 +592,7 @@ class DashboardScreen extends StatelessWidget {
                                 return Text(
                                   'v${snapshot.data!.version} (Build ${snapshot.data!.buildNumber})',
                                   style: TextStyle(
-                                    color: Colors.white.withOpacity(0.25),
+                                    color: Colors.white.withValues(alpha: 0.25),
                                     fontSize: 11,
                                     letterSpacing: 0.5,
                                   ),
@@ -514,7 +605,7 @@ class DashboardScreen extends StatelessWidget {
                           Text(
                             'Ads SDK - Init: ${adService.initStatus}',
                             style: TextStyle(
-                              color: Colors.white.withOpacity(0.25),
+                              color: Colors.white.withValues(alpha: 0.25),
                               fontSize: 10,
                             ),
                           ),
@@ -522,7 +613,15 @@ class DashboardScreen extends StatelessWidget {
                           Text(
                             'Banner: ${adService.bannerStatus} | Interstitial: ${adService.interstitialStatus}',
                             style: TextStyle(
-                              color: Colors.white.withOpacity(0.25),
+                              color: Colors.white.withValues(alpha: 0.25),
+                              fontSize: 10,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Update Status: ${updateService.statusText.isEmpty ? "Idle" : updateService.statusText}',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.25),
                               fontSize: 10,
                             ),
                           ),
@@ -534,7 +633,7 @@ class DashboardScreen extends StatelessWidget {
                                 '${adService.lastError}',
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
-                                  color: Colors.redAccent.withOpacity(0.8),
+                                  color: Colors.redAccent.withValues(alpha: 0.8),
                                   fontSize: 9,
                                 ),
                               ),

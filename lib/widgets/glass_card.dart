@@ -11,7 +11,7 @@ class GlassCard extends StatelessWidget {
   final List<Color>? gradientColors;
 
   const GlassCard({
-    Key? key,
+    super.key,
     required this.child,
     this.blur = 15.0,
     this.opacity = 0.08,
@@ -19,7 +19,7 @@ class GlassCard extends StatelessWidget {
     this.padding = const EdgeInsets.all(20.0),
     this.borderColor,
     this.gradientColors,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext buildContext) {
@@ -31,7 +31,7 @@ class GlassCard extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(borderRadius),
             border: Border.all(
-              color: borderColor ?? Colors.white.withOpacity(0.12),
+              color: borderColor ?? Colors.white.withValues(alpha: 0.12),
               width: 1.2,
             ),
             gradient: LinearGradient(
@@ -39,8 +39,8 @@ class GlassCard extends StatelessWidget {
               end: Alignment.bottomRight,
               colors: gradientColors ??
                   [
-                    Colors.white.withOpacity(opacity),
-                    Colors.white.withOpacity(opacity * 0.4),
+                    Colors.white.withValues(alpha: opacity),
+                    Colors.white.withValues(alpha: opacity * 0.4),
                   ],
             ),
           ),

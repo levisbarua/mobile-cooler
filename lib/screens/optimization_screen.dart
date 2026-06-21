@@ -5,7 +5,7 @@ import '../providers/cooler_provider.dart';
 import '../widgets/glass_card.dart';
 
 class OptimizationScreen extends StatelessWidget {
-  const OptimizationScreen({Key? key}) : super(key: key);
+  const OptimizationScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -34,7 +34,7 @@ class OptimizationScreen extends StatelessWidget {
                 center: const Alignment(0, -0.6),
                 radius: 1.4,
                 colors: [
-                  Colors.cyan.withOpacity(0.04),
+                  Colors.cyan.withValues(alpha: 0.04),
                   const Color(0xFF090A15),
                 ],
               ),
@@ -67,7 +67,7 @@ class OptimizationScreen extends StatelessWidget {
                           Text(
                             provider.coolingStepText,
                             style: TextStyle(
-                              color: Colors.white.withOpacity(0.6),
+                              color: Colors.white.withValues(alpha: 0.6),
                               fontSize: 14,
                             ),
                           ),
@@ -180,10 +180,10 @@ class OptimizationScreen extends StatelessWidget {
                                         Container(
                                           padding: const EdgeInsets.all(20),
                                           decoration: BoxDecoration(
-                                            color: Colors.cyanAccent.withOpacity(0.08),
+                                            color: Colors.cyanAccent.withValues(alpha: 0.08),
                                             shape: BoxShape.circle,
                                             border: Border.all(
-                                              color: Colors.cyanAccent.withOpacity(0.3),
+                                              color: Colors.cyanAccent.withValues(alpha: 0.3),
                                               width: 2,
                                             ),
                                           ),
@@ -207,7 +207,7 @@ class OptimizationScreen extends StatelessWidget {
                                           'No high-consumption background apps detected on your device.',
                                           textAlign: TextAlign.center,
                                           style: TextStyle(
-                                            color: Colors.white.withOpacity(0.5),
+                                            color: Colors.white.withValues(alpha: 0.5),
                                             fontSize: 13,
                                             height: 1.4,
                                           ),
@@ -216,14 +216,14 @@ class OptimizationScreen extends StatelessWidget {
                                         ElevatedButton.icon(
                                           onPressed: () => provider.scanProcesses(),
                                           style: ElevatedButton.styleFrom(
-                                            backgroundColor: Colors.white.withOpacity(0.06),
+                                            backgroundColor: Colors.white.withValues(alpha: 0.06),
                                             foregroundColor: Colors.white,
                                             minimumSize: const Size(180, 48),
                                             shape: RoundedRectangleBorder(
                                               borderRadius: BorderRadius.circular(24),
                                             ),
                                             side: BorderSide(
-                                              color: Colors.white.withOpacity(0.12),
+                                              color: Colors.white.withValues(alpha: 0.12),
                                               width: 1,
                                             ),
                                           ),
@@ -271,12 +271,12 @@ class OptimizationScreen extends StatelessWidget {
                                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                                           borderRadius: 16,
                                           borderColor: process.isSelected 
-                                              ? Colors.cyanAccent.withOpacity(0.3) 
-                                              : Colors.white.withOpacity(0.08),
+                                              ? Colors.cyanAccent.withValues(alpha: 0.3) 
+                                              : Colors.white.withValues(alpha: 0.08),
                                           gradientColors: process.isSelected
                                               ? [
-                                                  Colors.cyanAccent.withOpacity(0.04),
-                                                  Colors.white.withOpacity(0.04),
+                                                  Colors.cyanAccent.withValues(alpha: 0.04),
+                                                  Colors.white.withValues(alpha: 0.04),
                                                 ]
                                               : null,
                                           child: Row(
@@ -286,8 +286,8 @@ class OptimizationScreen extends StatelessWidget {
                                                 padding: const EdgeInsets.all(10),
                                                 decoration: BoxDecoration(
                                                   color: process.isSelected 
-                                                      ? Colors.cyanAccent.withOpacity(0.12)
-                                                      : Colors.white.withOpacity(0.05),
+                                                      ? Colors.cyanAccent.withValues(alpha: 0.12)
+                                                      : Colors.white.withValues(alpha: 0.05),
                                                   shape: BoxShape.circle,
                                                 ),
                                                 child: Icon(
@@ -315,7 +315,7 @@ class OptimizationScreen extends StatelessWidget {
                                                     Text(
                                                       process.category,
                                                       style: TextStyle(
-                                                        color: Colors.white.withOpacity(0.4),
+                                                        color: Colors.white.withValues(alpha: 0.4),
                                                         fontSize: 11,
                                                       ),
                                                     ),
@@ -385,7 +385,7 @@ class OptimizationScreen extends StatelessWidget {
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.cyanAccent,
                                 foregroundColor: Colors.black,
-                                disabledBackgroundColor: Colors.white.withOpacity(0.08),
+                                disabledBackgroundColor: Colors.white.withValues(alpha: 0.08),
                                 disabledForegroundColor: Colors.white30,
                                 minimumSize: const Size(double.infinity, 52),
                                 shape: RoundedRectangleBorder(

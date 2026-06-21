@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:battery_plus/battery_plus.dart';
 import 'package:screen_brightness/screen_brightness.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AppProcess {
   final String name;
@@ -63,6 +64,7 @@ class CoolerProvider extends ChangeNotifier {
   double _warningThreshold = 40.0;
   String _coolingMode = 'Auto';
   bool _autoCool = false;
+  bool _isPro = false;
 
   // Processes list
   List<AppProcess> _processes = [];
@@ -83,6 +85,7 @@ class CoolerProvider extends ChangeNotifier {
   bool get isStressing => _isStressing;
   double get warningThreshold => _warningThreshold;
   String get coolingMode => _coolingMode;
+  bool get isPro => _isPro;
   String get effectiveCoolingMode {
     if (_coolingMode != 'Auto') return _coolingMode;
     if (_temperature >= _warningThreshold + 4.0) {
@@ -100,9 +103,32 @@ class CoolerProvider extends ChangeNotifier {
   bool get hasRealTemp => _hasRealTemp;
 
   CoolerProvider() {
+    _loadSettings();
     _initBattery();
     _resetProcesses();
     _startRealTempPolling();
+  }
+
+  Future<void> _loadSettings() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _isPro = prefs.getBool('is_pro_version') ?? false;
+      _warningThreshold = prefs.getDouble('warning_threshold') ?? 40.0;
+      _coolingMode = prefs.getString('cooling_mode') ?? 'Auto';
+      _autoCool = prefs.getBool('auto_cool') ?? false;
+      notifyListeners();
+    } catch (e) {
+      if (kDebugMode) print('Settings load error: $e');
+    }
+  }
+
+  Future<void> setPro(bool value) async {
+    _isPro = value;
+    notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('is_pro_version', value);
+    } catch (_) {}
   }
 
   void _initBattery() async {
@@ -355,19 +381,31 @@ class CoolerProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void updateWarningThreshold(double val) {
+  void updateWarningThreshold(double val) async {
     _warningThreshold = double.parse(val.toStringAsFixed(1));
     notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setDouble('warning_threshold', _warningThreshold);
+    } catch (_) {}
   }
 
-  void updateCoolingMode(String mode) {
+  void updateCoolingMode(String mode) async {
     _coolingMode = mode;
     notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('cooling_mode', mode);
+    } catch (_) {}
   }
 
-  void toggleAutoCool(bool val) {
+  void toggleAutoCool(bool val) async {
     _autoCool = val;
     notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('auto_cool', val);
+    } catch (_) {}
   }
 
   @override
