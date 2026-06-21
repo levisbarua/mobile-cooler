@@ -881,7 +881,8 @@ class DashboardScreen extends StatelessWidget {
                           ),
                         ),
                       ),
-                     const SizedBox(height: 15),
+                      const SizedBox(height: 15),
+                    ],
 
                     // Junk Cleaner and Speed Booster quick controls
                     Row(
@@ -991,7 +992,6 @@ class DashboardScreen extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 15),
-                    ],
 
                     // Quick Navigation shortcuts
                     Row(

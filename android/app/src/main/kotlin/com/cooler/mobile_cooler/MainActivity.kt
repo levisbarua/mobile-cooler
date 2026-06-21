@@ -109,19 +109,25 @@ class MainActivity : FlutterActivity() {
 
     private fun killBackgroundProcesses(): Int {
         val activityManager = getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-        val runningApps = activityManager.runningAppProcesses ?: return 0
+        val pm = packageManager
+        val packages = pm.getInstalledPackages(0)
         var killed = 0
         val myPackage = packageName
 
-        for (process in runningApps) {
-            if (process.processName != myPackage &&
-                process.importance >= ActivityManager.RunningAppProcessInfo.IMPORTANCE_SERVICE
-            ) {
+        for (pkgInfo in packages) {
+            val pkgName = pkgInfo.packageName
+            val appInfo = pkgInfo.applicationInfo
+            val isSystem = if (appInfo != null) {
+                (appInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0
+            } else {
+                false
+            }
+            if (pkgName != myPackage && !isSystem) {
                 try {
-                    activityManager.killBackgroundProcesses(process.processName)
+                    activityManager.killBackgroundProcesses(pkgName)
                     killed++
                 } catch (e: Exception) {
-                    // Skip processes that can't be killed
+                    // Ignore
                 }
             }
         }
