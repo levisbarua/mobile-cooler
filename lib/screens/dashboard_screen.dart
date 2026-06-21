@@ -377,7 +377,6 @@ class DashboardScreen extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(width: 12),
-                        
                         // RAM Card
                         Expanded(
                           child: GlassCard(
@@ -396,6 +395,13 @@ class DashboardScreen extends StatelessWidget {
                                 Text(
                                   '${provider.ramUsage.toStringAsFixed(0)}%',
                                   style: GoogleFonts.outfit(fontSize: 22, color: Colors.white, fontWeight: FontWeight.bold),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  provider.totalRamMB > 0
+                                      ? '${(provider.usedRamMB / 1024).toStringAsFixed(1)}G / ${(provider.totalRamMB / 1024).toStringAsFixed(1)}G'
+                                      : 'Optimized',
+                                  style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 10),
                                 ),
                                 const SizedBox(height: 8),
                                 ClipRRect(
@@ -418,46 +424,324 @@ class DashboardScreen extends StatelessWidget {
                     // Battery Detail Card
                     GlassCard(
                       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      child: Column(
                         children: [
                           Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Icon(
-                                provider.batteryState == BatteryState.charging
-                                    ? Icons.battery_charging_full_rounded
-                                    : Icons.battery_std_rounded,
-                                color: provider.batteryState == BatteryState.charging ? Colors.greenAccent : Colors.tealAccent,
-                                size: 24,
-                              ),
-                              const SizedBox(width: 12),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                              Row(
                                 children: [
-                                  Text(
-                                    'Battery Level',
-                                    style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 11),
+                                  Icon(
+                                    provider.batteryState == BatteryState.charging
+                                        ? Icons.battery_charging_full_rounded
+                                        : Icons.battery_std_rounded,
+                                    color: provider.batteryState == BatteryState.charging ? Colors.greenAccent : Colors.tealAccent,
+                                    size: 24,
                                   ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    '${provider.batteryLevel}% (${provider.batteryState == BatteryState.charging ? "Charging" : "Discharging"})',
-                                    style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                                  const SizedBox(width: 12),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Battery Level',
+                                        style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 11),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        '${provider.batteryLevel}% (${provider.batteryPlugged != "Battery" ? "Charging via ${provider.batteryPlugged}" : "Discharging"})',
+                                        style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: (provider.batteryHealth == 'Good' ? Colors.tealAccent : Colors.redAccent).withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  provider.batteryHealth.toUpperCase(),
+                                  style: TextStyle(
+                                    color: provider.batteryHealth == 'Good' ? Colors.tealAccent : Colors.redAccent,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              )
                             ],
                           ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.tealAccent.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(8),
+                          if (provider.batteryVoltage > 0) ...[
+                            const SizedBox(height: 12),
+                            const Divider(color: Colors.white12, height: 1),
+                            const SizedBox(height: 10),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Voltage: ${(provider.batteryVoltage / 1000).toStringAsFixed(1)}V',
+                                  style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 11),
+                                ),
+                                Text(
+                                  'Tech: ${provider.batteryTechnology}',
+                                  style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 11),
+                                ),
+                                Text(
+                                  provider.isPowerSaveMode ? 'Power Saver: ON' : 'Power Saver: OFF',
+                                  style: TextStyle(
+                                    color: provider.isPowerSaveMode ? Colors.greenAccent : Colors.white.withValues(alpha: 0.5),
+                                    fontSize: 11,
+                                    fontWeight: provider.isPowerSaveMode ? FontWeight.bold : FontWeight.normal,
+                                  ),
+                                ),
+                              ],
                             ),
-                            child: const Text(
-                              'HEALTHY',
-                              style: TextStyle(color: Colors.tealAccent, fontSize: 10, fontWeight: FontWeight.bold),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 15),
+
+                    // Storage & Memory Optimization Card
+                    GlassCard(
+                      padding: const EdgeInsets.all(18),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(Icons.storage_rounded, color: Colors.cyanAccent, size: 20),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Internal Storage',
+                                    style: GoogleFonts.outfit(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              ElevatedButton.icon(
+                                onPressed: () async {
+                                  showDialog(
+                                    context: context,
+                                    barrierDismissible: false,
+                                    builder: (context) => const Center(
+                                      child: CircularProgressIndicator(color: Colors.cyanAccent),
+                                    ),
+                                  );
+                                  final double freed = await provider.cleanCache();
+                                  if (context.mounted) {
+                                    Navigator.pop(context);
+                                    final freedMB = freed / (1024.0 * 1024.0);
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        backgroundColor: const Color(0xFF0F1123),
+                                        content: Text(
+                                          freedMB > 0.05
+                                              ? 'Cache optimized! Freed ${freedMB.toStringAsFixed(1)} MB'
+                                              : 'System cache is already clean and optimized.',
+                                          style: GoogleFonts.outfit(color: Colors.cyanAccent),
+                                        ),
+                                        behavior: SnackBarBehavior.floating,
+                                      ),
+                                    );
+                                  }
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.cyanAccent.withValues(alpha: 0.15),
+                                  foregroundColor: Colors.cyanAccent,
+                                  elevation: 0,
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                  minimumSize: Size.zero,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                                icon: const Icon(Icons.clean_hands_rounded, size: 14),
+                                label: const Text('CLEAN CACHE', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          if (provider.totalStorageGB > 0) ...[
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  '${provider.usedStorageGB.toStringAsFixed(1)} GB used of ${provider.totalStorageGB.toStringAsFixed(0)} GB',
+                                  style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12),
+                                ),
+                                Text(
+                                  '${provider.storagePercent.toStringAsFixed(0)}%',
+                                  style: const TextStyle(color: Colors.cyanAccent, fontSize: 12, fontWeight: FontWeight.bold),
+                                ),
+                              ],
                             ),
-                          )
+                            const SizedBox(height: 8),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: LinearProgressIndicator(
+                                value: provider.storagePercent / 100,
+                                backgroundColor: Colors.white.withValues(alpha: 0.08),
+                                valueColor: const AlwaysStoppedAnimation<Color>(Colors.cyanAccent),
+                                minHeight: 6,
+                              ),
+                            ),
+                          ] else ...[
+                            const Text(
+                              'Analyzing storage details...',
+                              style: TextStyle(color: Colors.white30, fontSize: 12),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 15),
+
+                    // Hardware Controls (Control Hub) Section
+                    Text(
+                      'DEVICE CONTROL HUB',
+                      style: GoogleFonts.outfit(
+                        color: Colors.white.withValues(alpha: 0.4),
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 2.0,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => provider.toggleFlashlight(),
+                            child: GlassCard(
+                              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 14),
+                              borderColor: provider.flashlightActive
+                                  ? const Color(0xFF00F2FE).withValues(alpha: 0.5)
+                                  : null,
+                              gradientColors: provider.flashlightActive
+                                  ? [
+                                      const Color(0xFF00F2FE).withValues(alpha: 0.15),
+                                      const Color(0xFF090A15).withValues(alpha: 0.8),
+                                    ]
+                                  : null,
+                              child: Column(
+                                children: [
+                                  Icon(
+                                    provider.flashlightActive ? Icons.flashlight_on_rounded : Icons.flashlight_off_rounded,
+                                    color: provider.flashlightActive ? const Color(0xFF00F2FE) : Colors.white60,
+                                    size: 26,
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Text(
+                                    'Flashlight',
+                                    style: GoogleFonts.outfit(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    provider.flashlightActive ? 'ACTIVE' : 'OFF',
+                                    style: TextStyle(
+                                      color: provider.flashlightActive ? const Color(0xFF00F2FE) : Colors.white38,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => provider.toggleRingerMode(),
+                            child: GlassCard(
+                              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 14),
+                              borderColor: provider.ringerMode == 1
+                                  ? Colors.orangeAccent.withValues(alpha: 0.5)
+                                  : null,
+                              gradientColors: provider.ringerMode == 1
+                                  ? [
+                                      Colors.orangeAccent.withValues(alpha: 0.12),
+                                      const Color(0xFF090A15).withValues(alpha: 0.8),
+                                    ]
+                                  : null,
+                              child: Column(
+                                children: [
+                                  Icon(
+                                    provider.ringerMode == 2 ? Icons.volume_up_rounded : Icons.vibration_rounded,
+                                    color: provider.ringerMode == 2 ? Colors.cyanAccent : Colors.orangeAccent,
+                                    size: 26,
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Text(
+                                    'Sound Profile',
+                                    style: GoogleFonts.outfit(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    provider.ringerMode == 2 ? 'SOUND' : 'VIBRATE',
+                                    style: TextStyle(
+                                      color: provider.ringerMode == 2 ? Colors.cyanAccent : Colors.orangeAccent,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 15),
+
+                    // Quick Settings shortcuts section
+                    Text(
+                      'SYSTEM SHORTCUTS',
+                      style: GoogleFonts.outfit(
+                        color: Colors.white.withValues(alpha: 0.4),
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 2.0,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    GlassCard(
+                      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          _buildShortcutItem(
+                            icon: Icons.battery_saver_rounded,
+                            color: Colors.greenAccent,
+                            label: 'Battery',
+                            onTap: () => provider.openSystemSettings('battery'),
+                          ),
+                          _buildShortcutItem(
+                            icon: Icons.brightness_medium_rounded,
+                            color: Colors.amberAccent,
+                            label: 'Display',
+                            onTap: () => provider.openSystemSettings('display'),
+                          ),
+                          _buildShortcutItem(
+                            icon: Icons.translate_rounded,
+                            color: Colors.indigoAccent,
+                            label: 'Language',
+                            onTap: () => provider.openSystemSettings('language'),
+                          ),
+                          _buildShortcutItem(
+                            icon: Icons.developer_mode_rounded,
+                            color: Colors.purpleAccent,
+                            label: 'Dev Tools',
+                            onTap: () => provider.openSystemSettings('developer'),
+                          ),
                         ],
                       ),
                     ),
@@ -647,7 +931,45 @@ class DashboardScreen extends StatelessWidget {
                 ),
               ),
             ),
-          ),
+        ),
+      );
+    }
+
+  Widget _buildShortcutItem({
+    required IconData icon,
+    required Color color,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        child: Column(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+                border: Border.all(color: color.withValues(alpha: 0.25), width: 1),
+              ),
+              child: Icon(icon, color: color, size: 20),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: GoogleFonts.outfit(
+                color: Colors.white70,
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

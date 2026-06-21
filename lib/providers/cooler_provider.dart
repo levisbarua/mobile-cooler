@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:battery_plus/battery_plus.dart';
 import 'package:screen_brightness/screen_brightness.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:path_provider/path_provider.dart';
 
 class AppProcess {
   final String name;
@@ -66,6 +68,28 @@ class CoolerProvider extends ChangeNotifier {
   bool _autoCool = false;
   bool _isPro = false;
 
+  // Real RAM usage detailed state
+  double _totalRamMB = 0.0;
+  double _usedRamMB = 0.0;
+  double _availRamMB = 0.0;
+
+  // Real Storage usage detailed state
+  double _totalStorageGB = 0.0;
+  double _usedStorageGB = 0.0;
+  double _availStorageGB = 0.0;
+  double _storagePercent = 0.0;
+
+  // Battery Extended details
+  double _batteryVoltage = 0.0;
+  String _batteryHealth = 'Good';
+  String _batteryTechnology = 'Li-ion';
+  String _batteryPlugged = 'Battery';
+  bool _isPowerSaveMode = false;
+
+  // Device Hardware Controls state
+  bool _flashlightActive = false;
+  int _ringerMode = 2; // AudioManager.RINGER_MODE_NORMAL = 2
+
   // Processes list
   List<AppProcess> _processes = [];
 
@@ -102,10 +126,31 @@ class CoolerProvider extends ChangeNotifier {
   List<AppProcess> get processes => _processes;
   bool get hasRealTemp => _hasRealTemp;
 
+  // New Getters for Device Controls and System Info
+  double get totalRamMB => _totalRamMB;
+  double get usedRamMB => _usedRamMB;
+  double get availRamMB => _availRamMB;
+
+  double get totalStorageGB => _totalStorageGB;
+  double get usedStorageGB => _usedStorageGB;
+  double get availStorageGB => _availStorageGB;
+  double get storagePercent => _storagePercent;
+
+  double get batteryVoltage => _batteryVoltage;
+  String get batteryHealth => _batteryHealth;
+  String get batteryTechnology => _batteryTechnology;
+  String get batteryPlugged => _batteryPlugged;
+  bool get isPowerSaveMode => _isPowerSaveMode;
+
+  bool get flashlightActive => _flashlightActive;
+  int get ringerMode => _ringerMode;
+
   CoolerProvider() {
     _loadSettings();
     _initBattery();
     _resetProcesses();
+    fetchStorageInfo();
+    _fetchRealDeviceStats();
     _startRealTempPolling();
   }
 
@@ -159,6 +204,9 @@ class CoolerProvider extends ChangeNotifier {
         }
       }).catchError((_) {});
 
+      // Refresh storage
+      fetchStorageInfo();
+
       // Auto-cool trigger
       if (_autoCool && _temperature >= _warningThreshold && !_isCooling) {
         startCooling();
@@ -168,23 +216,122 @@ class CoolerProvider extends ChangeNotifier {
 
   Future<void> _fetchRealTemperature() async {
     try {
-      final double temp = await _channel.invokeMethod('getBatteryTemperature');
-      if (temp > 0) {
-        _hasRealTemp = true;
-        _temperature = temp;
-
-        // Simulate CPU / RAM drift alongside real temp
-        final random = Random();
-        _cpuUsage = (_cpuUsage + (random.nextDouble() - 0.5) * 3).clamp(10.0, 98.0);
-        _ramUsage = (_ramUsage + (random.nextDouble() - 0.5) * 2).clamp(30.0, 95.0);
-
-        notifyListeners();
+      await _fetchRealDeviceStats();
+      if (!_hasRealTemp) {
+        _simulateTemperatureDrift();
       }
     } catch (e) {
-      if (kDebugMode) print('Temperature channel error: $e');
-      // Fallback: simulate if real temp not available (web/desktop)
+      if (kDebugMode) print('Stats channel error: $e');
       _simulateTemperatureDrift();
     }
+  }
+
+  Future<void> _fetchRealDeviceStats() async {
+    try {
+      // Fetch RAM
+      final Map<dynamic, dynamic>? ramData = await _channel.invokeMethod('getMemoryUsage');
+      if (ramData != null) {
+        _totalRamMB = (ramData['total'] as num).toDouble();
+        _availRamMB = (ramData['avail'] as num).toDouble();
+        _usedRamMB = (ramData['used'] as num).toDouble();
+        _ramUsage = (ramData['percent'] as num).toDouble();
+      }
+    } catch (_) {}
+
+    try {
+      // Fetch battery details
+      final Map<dynamic, dynamic>? batteryDetails = await _channel.invokeMethod('getBatteryDetails');
+      if (batteryDetails != null) {
+        final double temp = (batteryDetails['temperature'] as num).toDouble();
+        if (temp > 0) {
+          _temperature = temp;
+          _hasRealTemp = true;
+        }
+        _batteryVoltage = (batteryDetails['voltage'] as num).toDouble();
+        _batteryTechnology = batteryDetails['technology'] as String;
+        _batteryHealth = batteryDetails['health'] as String;
+        _batteryPlugged = batteryDetails['plugged'] as String;
+        _isPowerSaveMode = batteryDetails['isPowerSave'] as bool;
+      }
+    } catch (_) {}
+
+    try {
+      // Fetch ringer mode
+      final int? mode = await _channel.invokeMethod('getRingerMode');
+      if (mode != null) {
+        _ringerMode = mode;
+      }
+    } catch (_) {}
+
+    notifyListeners();
+  }
+
+  Future<void> fetchStorageInfo() async {
+    try {
+      final Map<dynamic, dynamic>? storageData = await _channel.invokeMethod('getStorageUsage');
+      if (storageData != null) {
+        _totalStorageGB = (storageData['total'] as num).toDouble();
+        _availStorageGB = (storageData['avail'] as num).toDouble();
+        _usedStorageGB = (storageData['used'] as num).toDouble();
+        _storagePercent = (storageData['percent'] as num).toDouble();
+        notifyListeners();
+      }
+    } catch (_) {}
+  }
+
+  Future<void> toggleFlashlight() async {
+    _flashlightActive = !_flashlightActive;
+    notifyListeners();
+    try {
+      await _channel.invokeMethod('toggleFlashlight', {'enable': _flashlightActive});
+    } catch (e) {
+      if (kDebugMode) print('Flashlight error: $e');
+      _flashlightActive = !_flashlightActive;
+      notifyListeners();
+    }
+  }
+
+  Future<void> toggleRingerMode() async {
+    final newMode = _ringerMode == 2 ? 1 : 2;
+    _ringerMode = newMode;
+    notifyListeners();
+    try {
+      await _channel.invokeMethod('setRingerMode', {'mode': newMode});
+    } catch (e) {
+      if (kDebugMode) print('Ringer mode error: $e');
+    }
+  }
+
+  Future<void> openSystemSettings(String type) async {
+    try {
+      await _channel.invokeMethod('openSettings', {'type': type});
+    } catch (e) {
+      if (kDebugMode) print('Open settings error: $e');
+    }
+  }
+
+  Future<double> cleanCache() async {
+    double bytesFreed = 0.0;
+    try {
+      final cacheDir = await getTemporaryDirectory();
+      if (await cacheDir.exists()) {
+        final files = cacheDir.listSync(recursive: true);
+        for (var file in files) {
+          if (file is File) {
+            try {
+              final size = await file.length();
+              await file.delete();
+              bytesFreed += size;
+            } catch (_) {}
+          }
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) print('Cache cleaner error: $e');
+    }
+    
+    await fetchStorageInfo();
+    return bytesFreed;
   }
 
   void _simulateTemperatureDrift() {
@@ -194,6 +341,11 @@ class CoolerProvider extends ChangeNotifier {
     if (_isStressing) drift += 0.8;
     _temperature = (_temperature + drift).clamp(31.0, 48.0);
     _temperature = double.parse(_temperature.toStringAsFixed(1));
+
+    // Simulate CPU and RAM usage drift
+    _cpuUsage = (_cpuUsage + (random.nextDouble() - 0.5) * 3).clamp(10.0, 98.0);
+    _ramUsage = (_ramUsage + (random.nextDouble() - 0.5) * 2).clamp(30.0, 95.0);
+
     notifyListeners();
   }
 
@@ -375,10 +527,49 @@ class CoolerProvider extends ChangeNotifier {
 
     await Future.delayed(const Duration(seconds: 2));
 
-    _resetProcesses();
+    try {
+      final List<dynamic>? nativeApps = await _channel.invokeMethod('getInstalledHeavyApps');
+      if (nativeApps != null && nativeApps.isNotEmpty) {
+        _processes = nativeApps.map((app) {
+          final map = app as Map<dynamic, dynamic>;
+          return AppProcess(
+            name: map['name'] as String,
+            category: 'Resource Intensive',
+            cpuImpact: (map['cpuImpact'] as num).toDouble(),
+            ramImpact: (map['ramImpact'] as num).toDouble(),
+            iconName: _getIconForAppName(map['name'] as String),
+          );
+        }).toList();
+      } else {
+        _resetProcesses();
+      }
+    } catch (e) {
+      if (kDebugMode) print('Scan heavy apps error: $e');
+      _resetProcesses();
+    }
+
     _isScanning = false;
     _coolingStepText = '';
     notifyListeners();
+  }
+
+  String _getIconForAppName(String name) {
+    switch (name.toLowerCase()) {
+      case 'facebook': return 'facebook';
+      case 'instagram': return 'camera';
+      case 'tiktok': return 'music_note';
+      case 'youtube': return 'play_circle';
+      case 'whatsapp': return 'message';
+      case 'google maps': return 'navigation';
+      case 'snapchat': return 'photo_camera';
+      case 'netflix': return 'tv';
+      case 'spotify': return 'music_video';
+      case 'pubg mobile': return 'videogame_asset';
+      case 'free fire': return 'games';
+      case 'x (twitter)': return 'share';
+      case 'messenger': return 'chat';
+      default: return 'android';
+    }
   }
 
   void updateWarningThreshold(double val) async {

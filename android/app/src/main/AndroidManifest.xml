@@ -62,5 +62,18 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <package android:name="com.facebook.katana" />
+        <package android:name="com.instagram.android" />
+        <package android:name="com.zhiliaoapp.musically" />
+        <package android:name="com.google.android.youtube" />
+        <package android:name="com.whatsapp" />
+        <package android:name="com.google.android.apps.maps" />
+        <package android:name="com.snapchat.android" />
+        <package android:name="com.netflix.mediaclient" />
+        <package android:name="com.spotify.music" />
+        <package android:name="com.tencent.ig" />
+        <package android:name="com.dts.freefireth" />
+        <package android:name="com.twitter.android" />
+        <package android:name="com.facebook.orca" />
     </queries>
 </manifest>

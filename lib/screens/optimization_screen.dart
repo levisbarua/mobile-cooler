@@ -243,6 +243,36 @@ class OptimizationScreen extends StatelessWidget {
                                     
                                     IconData processIcon;
                                     switch (process.iconName) {
+                                      case 'facebook':
+                                        processIcon = Icons.facebook;
+                                        break;
+                                      case 'camera':
+                                        processIcon = Icons.camera_alt_rounded;
+                                        break;
+                                      case 'music_note':
+                                        processIcon = Icons.music_note_rounded;
+                                        break;
+                                      case 'play_circle':
+                                        processIcon = Icons.play_circle_fill_rounded;
+                                        break;
+                                      case 'message':
+                                        processIcon = Icons.message_rounded;
+                                        break;
+                                      case 'photo_camera':
+                                        processIcon = Icons.photo_camera_rounded;
+                                        break;
+                                      case 'music_video':
+                                        processIcon = Icons.music_video_rounded;
+                                        break;
+                                      case 'videogame_asset':
+                                        processIcon = Icons.videogame_asset_rounded;
+                                        break;
+                                      case 'games':
+                                        processIcon = Icons.games_rounded;
+                                        break;
+                                      case 'chat':
+                                        processIcon = Icons.chat_bubble_rounded;
+                                        break;
                                       case 'share':
                                         processIcon = Icons.share_rounded;
                                         break;
