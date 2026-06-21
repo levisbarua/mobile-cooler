@@ -64,8 +64,9 @@ class UpdateService extends ChangeNotifier {
       final currentBuildNumber = int.tryParse(packageInfo.buildNumber) ?? 1;
       _setStatus('Checking... Local Build: $currentBuildNumber');
 
+      final cacheBusterUrl = '$_versionUrl?t=${DateTime.now().millisecondsSinceEpoch}';
       final response = await http
-          .get(Uri.parse(_versionUrl))
+          .get(Uri.parse(cacheBusterUrl))
           .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
