@@ -1,6 +1,6 @@
 {
-  "version": "1.2.7",
-  "version_code": 19,
-  "download_url": "https://tmpfiles.org/dl/wzwfoPKAFP54/app-release.apk",
-  "release_notes": "OTA Update implementing real file system cache cleaner, background process speed booster, and ensuring features are accessible in both Free and Pro versions."
+  "version": "1.2.8",
+  "version_code": 20,
+  "download_url": "https://tmpfiles.org/dl/wtwJorZfykOL/app-release.apk",
+  "release_notes": "OTA Update implementing cache-buster logic to fix immediately triggering update popups, real storage cleaner, process booster, and flashlight control."
 }
