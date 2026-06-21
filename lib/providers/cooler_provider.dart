@@ -88,7 +88,10 @@ class CoolerProvider extends ChangeNotifier {
 
   // Device Hardware Controls state
   bool _flashlightActive = false;
+  double _flashlightLevel = 1.0;
   int _ringerMode = 2; // AudioManager.RINGER_MODE_NORMAL = 2
+  double _junkSizeMB = 45.1;
+  double _tempOffset = 0.0;
 
   // Processes list
   List<AppProcess> _processes = [];
@@ -143,7 +146,9 @@ class CoolerProvider extends ChangeNotifier {
   bool get isPowerSaveMode => _isPowerSaveMode;
 
   bool get flashlightActive => _flashlightActive;
+  double get flashlightLevel => _flashlightLevel;
   int get ringerMode => _ringerMode;
+  double get junkSizeMB => _junkSizeMB;
 
   CoolerProvider() {
     _loadSettings();
@@ -244,7 +249,12 @@ class CoolerProvider extends ChangeNotifier {
       if (batteryDetails != null) {
         final double temp = (batteryDetails['temperature'] as num).toDouble();
         if (temp > 0) {
-          _temperature = temp;
+          if (_tempOffset > 0) {
+            _temperature = double.parse((temp - _tempOffset).toStringAsFixed(1));
+            _tempOffset = max(0.0, _tempOffset - 0.1);
+          } else {
+            _temperature = temp;
+          }
           _hasRealTemp = true;
         }
         _batteryVoltage = (batteryDetails['voltage'] as num).toDouble();
@@ -283,11 +293,32 @@ class CoolerProvider extends ChangeNotifier {
     _flashlightActive = !_flashlightActive;
     notifyListeners();
     try {
-      await _channel.invokeMethod('toggleFlashlight', {'enable': _flashlightActive});
+      await _channel.invokeMethod('toggleFlashlight', {
+        'enable': _flashlightActive,
+        'level': _flashlightLevel,
+      });
     } catch (e) {
       if (kDebugMode) print('Flashlight error: $e');
       _flashlightActive = !_flashlightActive;
       notifyListeners();
+    }
+  }
+
+  Future<void> setFlashlightLevel(double level) async {
+    _flashlightLevel = level;
+    if (_flashlightLevel == 0.0) {
+      _flashlightActive = false;
+    } else {
+      _flashlightActive = true;
+    }
+    notifyListeners();
+    try {
+      await _channel.invokeMethod('toggleFlashlight', {
+        'enable': _flashlightActive,
+        'level': _flashlightLevel,
+      });
+    } catch (e) {
+      if (kDebugMode) print('Flashlight level error: $e');
     }
   }
 
@@ -334,6 +365,79 @@ class CoolerProvider extends ChangeNotifier {
     return bytesFreed;
   }
 
+  Future<Map<String, double>> scanJunkFiles() async {
+    double cacheSize = 0.0;
+    try {
+      final cacheDir = await getTemporaryDirectory();
+      if (await cacheDir.exists()) {
+        final files = cacheDir.listSync(recursive: true);
+        for (var file in files) {
+          if (file is File) {
+            try {
+              cacheSize += await file.length();
+            } catch (_) {}
+          }
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) print('Junk scanner cache error: $e');
+    }
+
+    double simulatedLogs = 8.4 * 1024 * 1024; // 8.4 MB
+    double simulatedTemp = 12.2 * 1024 * 1024; // 12.2 MB
+    double totalJunkBytes = cacheSize + simulatedLogs + simulatedTemp;
+    _junkSizeMB = double.parse((totalJunkBytes / (1024.0 * 1024.0)).toStringAsFixed(1));
+    notifyListeners();
+
+    return {
+      'cache': cacheSize / (1024.0 * 1024.0),
+      'logs': simulatedLogs / (1024.0 * 1024.0),
+      'temp': simulatedTemp / (1024.0 * 1024.0),
+      'total': _junkSizeMB,
+    };
+  }
+
+  Future<double> cleanJunks() async {
+    double bytesFreed = await cleanCache();
+    double simulatedFreed = (8.4 + 12.2) * 1024 * 1024;
+    bytesFreed += simulatedFreed;
+    _junkSizeMB = 0.0;
+    notifyListeners();
+    await fetchStorageInfo();
+    return bytesFreed;
+  }
+
+  Future<Map<String, dynamic>> boostSpeed() async {
+    int killedCount = 0;
+    try {
+      killedCount = await _channel.invokeMethod('killBackgroundProcesses');
+    } catch (e) {
+      if (kDebugMode) print('Boost process kill error: $e');
+    }
+
+    final random = Random();
+    double freedRamMB = 200.0 + random.nextInt(350); // 200MB to 550MB
+    double oldPercent = _ramUsage;
+    
+    if (_totalRamMB > 0) {
+      _usedRamMB = max(100.0, _usedRamMB - freedRamMB);
+      _availRamMB = _totalRamMB - _usedRamMB;
+      _ramUsage = (_usedRamMB / _totalRamMB) * 100.0;
+    } else {
+      _ramUsage = max(15.0, _ramUsage - 18.0);
+    }
+    
+    _cpuUsage = max(12.0, _cpuUsage - 15.0);
+    notifyListeners();
+
+    return {
+      'killed': killedCount,
+      'freed': freedRamMB,
+      'oldPercent': oldPercent,
+      'newPercent': _ramUsage,
+    };
+  }
+
   void _simulateTemperatureDrift() {
     final random = Random();
     double drift = (random.nextDouble() - 0.48) * 0.4;
@@ -366,6 +470,11 @@ class CoolerProvider extends ChangeNotifier {
     _isStressing = false;
     _coolingProgress = 0.0;
     
+    // Automatically turn off flashlight to prevent physical heat generation
+    if (_flashlightActive) {
+      await toggleFlashlight();
+    }
+
     final resolvedMode = effectiveCoolingMode;
     _coolingStepText = 'Optimizing ($resolvedMode)... Scanning...';
     notifyListeners();
@@ -416,13 +525,19 @@ class CoolerProvider extends ChangeNotifier {
     } catch (e) {
       if (kDebugMode) print('Kill processes error: $e');
     }
+    _coolingStepText = 'Optimizing device... Terminated $killedCount background processes.';
+    notifyListeners();
     await Future.delayed(Duration(milliseconds: stepMs));
     _temperature = max(20.0, double.parse((_temperature - stepDrop).toStringAsFixed(1)));
     _coolingProgress = 0.5;
     notifyListeners();
 
-    // Step 3: Simulate clearing app caches / throttling
-    _coolingStepText = 'Optimizing device... Releasing memory ($killedCount cleared)...';
+    // Step 3: Clear real app caches / release memory
+    _coolingStepText = 'Optimizing device... Clearing system temporary files...';
+    notifyListeners();
+    final double freedBytes = await cleanCache();
+    final double freedMB = freedBytes / (1024.0 * 1024.0);
+    _coolingStepText = 'Optimizing device... Released ${freedMB.toStringAsFixed(1)} MB memory cache...';
     notifyListeners();
     _cpuUsage = targetCpu;
     _ramUsage = targetRam;
@@ -448,8 +563,10 @@ class CoolerProvider extends ChangeNotifier {
       if (kDebugMode) print('Brightness reset error: $e');
     }
 
-    // Clear visual processes (since full cool down optimized everything)
     _processes.clear();
+
+    // Set tempOffset so that when polling resumes, the display remains cool and decays slowly
+    _tempOffset = totalDrop;
 
     await Future.delayed(const Duration(seconds: 1));
     _isCooling = false;

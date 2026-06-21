@@ -8,6 +8,7 @@ import android.net.Uri
 import android.os.BatteryManager
 import android.os.Build
 import android.hardware.camera2.CameraManager
+import android.hardware.camera2.CameraCharacteristics
 import android.media.AudioManager
 import android.os.Environment
 import android.os.StatFs
@@ -63,8 +64,9 @@ class MainActivity : FlutterActivity() {
                 }
                 "toggleFlashlight" -> {
                     val enable = call.argument<Boolean>("enable") ?: false
+                    val level = call.argument<Double>("level") ?: 1.0
                     try {
-                        toggleFlashlight(enable)
+                        toggleFlashlight(enable, level)
                         result.success(true)
                     } catch (e: Exception) {
                         result.error("FLASHLIGHT_ERROR", e.message, null)
@@ -234,12 +236,31 @@ class MainActivity : FlutterActivity() {
         )
     }
 
-    private fun toggleFlashlight(enable: Boolean) {
+    private fun toggleFlashlight(enable: Boolean, level: Double) {
         val cameraManager = getSystemService(Context.CAMERA_SERVICE) as CameraManager
         val cameraIdList = cameraManager.cameraIdList
         if (cameraIdList.isNotEmpty()) {
             val cameraId = cameraIdList[0]
-            cameraManager.setTorchMode(cameraId, enable)
+            if (!enable) {
+                cameraManager.setTorchMode(cameraId, false)
+            } else {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    try {
+                        val chars = cameraManager.getCameraCharacteristics(cameraId)
+                        val maxLevel = chars.get(CameraCharacteristics.FLASH_INFO_STRENGTH_MAXIMUM_LEVEL) ?: 1
+                        if (maxLevel > 1) {
+                            val targetStrength = (level * maxLevel).toInt().coerceAtLeast(1).coerceAtMost(maxLevel)
+                            cameraManager.turnOnTorchWithStrengthLevel(cameraId, targetStrength)
+                        } else {
+                            cameraManager.setTorchMode(cameraId, true)
+                        }
+                    } catch (e: Exception) {
+                        cameraManager.setTorchMode(cameraId, true)
+                    }
+                } else {
+                    cameraManager.setTorchMode(cameraId, true)
+                }
+            }
         }
     }
 

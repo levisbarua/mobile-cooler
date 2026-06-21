@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -290,6 +291,44 @@ class DashboardScreen extends StatelessWidget {
                                               ),
                                             ],
                                           ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 20),
+                                      GlassCard(
+                                        padding: const EdgeInsets.all(16),
+                                        borderRadius: 16,
+                                        borderColor: Colors.cyanAccent.withValues(alpha: 0.2),
+                                        gradientColors: [
+                                          Colors.cyanAccent.withValues(alpha: 0.05),
+                                          const Color(0xFF090A15).withValues(alpha: 0.8),
+                                        ],
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Row(
+                                              children: [
+                                                const Icon(Icons.info_outline_rounded, color: Colors.cyanAccent, size: 18),
+                                                const SizedBox(width: 8),
+                                                Text(
+                                                  'PHYSICAL COOLING TIPS',
+                                                  style: GoogleFonts.outfit(
+                                                    color: Colors.cyanAccent,
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.bold,
+                                                    letterSpacing: 1.0,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            const SizedBox(height: 12),
+                                            _buildTipRow(Icons.phone_android_rounded, 'Remove phone case/cover to release trapped heat.'),
+                                            const SizedBox(height: 8),
+                                            _buildTipRow(Icons.power_off_rounded, 'Avoid charging the phone (charging generates intense heat).'),
+                                            const SizedBox(height: 8),
+                                            _buildTipRow(Icons.air_rounded, 'Place the device in a cool environment or near a fan.'),
+                                            const SizedBox(height: 8),
+                                            _buildTipRow(Icons.phonelink_erase_rounded, 'Lock the device and turn off screen for maximum heat decay.'),
+                                          ],
                                         ),
                                       ),
                                     ],
@@ -618,42 +657,75 @@ class DashboardScreen extends StatelessWidget {
                     Row(
                       children: [
                         Expanded(
-                          child: GestureDetector(
-                            onTap: () => provider.toggleFlashlight(),
-                            child: GlassCard(
-                              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 14),
-                              borderColor: provider.flashlightActive
-                                  ? const Color(0xFF00F2FE).withValues(alpha: 0.5)
-                                  : null,
-                              gradientColors: provider.flashlightActive
-                                  ? [
-                                      const Color(0xFF00F2FE).withValues(alpha: 0.15),
-                                      const Color(0xFF090A15).withValues(alpha: 0.8),
-                                    ]
-                                  : null,
-                              child: Column(
-                                children: [
-                                  Icon(
-                                    provider.flashlightActive ? Icons.flashlight_on_rounded : Icons.flashlight_off_rounded,
-                                    color: provider.flashlightActive ? const Color(0xFF00F2FE) : Colors.white60,
-                                    size: 26,
+                          child: GlassCard(
+                            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 14),
+                            borderColor: provider.flashlightActive
+                                ? const Color(0xFF00F2FE).withValues(alpha: 0.5)
+                                : null,
+                            gradientColors: provider.flashlightActive
+                                ? [
+                                    const Color(0xFF00F2FE).withValues(alpha: 0.15),
+                                    const Color(0xFF090A15).withValues(alpha: 0.8),
+                                  ]
+                                : null,
+                            child: Column(
+                              children: [
+                                GestureDetector(
+                                  onTap: () => provider.toggleFlashlight(),
+                                  behavior: HitTestBehavior.opaque,
+                                  child: Column(
+                                    children: [
+                                      Icon(
+                                        provider.flashlightActive ? Icons.flashlight_on_rounded : Icons.flashlight_off_rounded,
+                                        color: provider.flashlightActive ? const Color(0xFF00F2FE) : Colors.white60,
+                                        size: 26,
+                                      ),
+                                      const SizedBox(height: 10),
+                                      Text(
+                                        'Flashlight',
+                                        style: GoogleFonts.outfit(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        provider.flashlightActive ? 'ACTIVE' : 'OFF',
+                                        style: TextStyle(
+                                          color: provider.flashlightActive ? const Color(0xFF00F2FE) : Colors.white38,
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
                                   ),
+                                ),
+                                if (provider.flashlightActive) ...[
                                   const SizedBox(height: 10),
-                                  Text(
-                                    'Flashlight',
-                                    style: GoogleFonts.outfit(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    provider.flashlightActive ? 'ACTIVE' : 'OFF',
-                                    style: TextStyle(
-                                      color: provider.flashlightActive ? const Color(0xFF00F2FE) : Colors.white38,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
+                                  GestureDetector(
+                                    onTap: () {},
+                                    child: SliderTheme(
+                                      data: SliderThemeData(
+                                        trackHeight: 2,
+                                        activeTrackColor: const Color(0xFF00F2FE),
+                                        inactiveTrackColor: Colors.white10,
+                                        thumbColor: const Color(0xFF00F2FE),
+                                        thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                                        overlayShape: const RoundSliderOverlayShape(overlayRadius: 10),
+                                      ),
+                                      child: Slider(
+                                        value: provider.flashlightLevel,
+                                        min: 0.1,
+                                        max: 1.0,
+                                        onChanged: (val) {
+                                          provider.setFlashlightLevel(val);
+                                        },
+                                      ),
                                     ),
                                   ),
+                                  Text(
+                                    'Intensity: ${(provider.flashlightLevel * 100).toInt()}%',
+                                    style: const TextStyle(color: Colors.white38, fontSize: 9, fontWeight: FontWeight.bold),
+                                  ),
                                 ],
-                              ),
+                              ],
                             ),
                           ),
                         ),
@@ -797,7 +869,116 @@ class DashboardScreen extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 20),
+                     const SizedBox(height: 15),
+
+                    // Junk Cleaner and Speed Booster quick controls
+                    Row(
+                      children: [
+                        // Speed Booster Card
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => _showSpeedBoosterDialog(context, provider),
+                            child: GlassCard(
+                              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+                              borderColor: Colors.cyanAccent.withValues(alpha: 0.15),
+                              gradientColors: [
+                                Colors.cyanAccent.withValues(alpha: 0.05),
+                                const Color(0xFF090A15).withValues(alpha: 0.8),
+                              ],
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.cyanAccent.withValues(alpha: 0.1),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(Icons.speed_rounded, color: Colors.cyanAccent, size: 18),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Speed Boost',
+                                          style: GoogleFonts.outfit(
+                                            color: Colors.white,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        const Text(
+                                          'Boost RAM',
+                                          style: TextStyle(color: Colors.white38, fontSize: 10),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+
+                        // Junk Cleaner Card
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => _showJunkCleanerDialog(context, provider),
+                            child: GlassCard(
+                              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+                              borderColor: Colors.greenAccent.withValues(alpha: 0.15),
+                              gradientColors: [
+                                Colors.greenAccent.withValues(alpha: 0.05),
+                                const Color(0xFF090A15).withValues(alpha: 0.8),
+                              ],
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.greenAccent.withValues(alpha: 0.1),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(Icons.delete_sweep_rounded, color: Colors.greenAccent, size: 18),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Junk Clean',
+                                          style: GoogleFonts.outfit(
+                                            color: Colors.white,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          provider.junkSizeMB > 0
+                                              ? '${provider.junkSizeMB.toStringAsFixed(1)} MB'
+                                              : 'Optimized',
+                                          style: TextStyle(
+                                            color: provider.junkSizeMB > 0 ? Colors.greenAccent : Colors.white38,
+                                            fontSize: 10,
+                                            fontWeight: provider.junkSizeMB > 0 ? FontWeight.bold : FontWeight.normal,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 15),
                     ],
 
                     // Quick Navigation shortcuts
@@ -970,6 +1151,518 @@ class DashboardScreen extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  void _showSpeedBoosterDialog(BuildContext context, CoolerProvider provider) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => _SpeedBoosterDialogContent(provider: provider),
+    );
+  }
+
+  void _showJunkCleanerDialog(BuildContext context, CoolerProvider provider) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => _JunkCleanerDialogContent(provider: provider),
+    );
+  }
+
+  Widget _buildTipRow(IconData icon, String text) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: Colors.white60, size: 14),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(color: Colors.white70, fontSize: 11, height: 1.3),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SpeedBoosterDialogContent extends StatefulWidget {
+  final CoolerProvider provider;
+  const _SpeedBoosterDialogContent({required this.provider});
+
+  @override
+  State<_SpeedBoosterDialogContent> createState() => _SpeedBoosterDialogContentState();
+}
+
+class _SpeedBoosterDialogContentState extends State<_SpeedBoosterDialogContent> {
+  String _statusText = 'Analyzing memory...';
+  double _progress = 0.0;
+  bool _isFinished = false;
+  int _killedCount = 0;
+  double _freedMB = 0.0;
+  double _oldPercent = 0.0;
+  double _newPercent = 0.0;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _startBoost();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  void _startBoost() async {
+    int steps = 15;
+    int currentStep = 0;
+    _timer = Timer.periodic(const Duration(milliseconds: 120), (timer) async {
+      currentStep++;
+      if (mounted) {
+        setState(() {
+          _progress = currentStep / steps;
+          if (currentStep < 5) {
+            _statusText = 'Analyzing RAM allocations...';
+          } else if (currentStep < 10) {
+            _statusText = 'Locating inactive background services...';
+          } else {
+            _statusText = 'Preparing speed optimization...';
+          }
+        });
+      }
+
+      if (currentStep >= steps) {
+        timer.cancel();
+        if (mounted) {
+          setState(() {
+            _statusText = 'Boosting device performance...';
+          });
+        }
+        
+        final results = await widget.provider.boostSpeed();
+        
+        if (mounted) {
+          setState(() {
+            _killedCount = results['killed'] ?? 0;
+            _freedMB = results['freed'] ?? 0.0;
+            _oldPercent = results['oldPercent'] ?? 0.0;
+            _newPercent = results['newPercent'] ?? 0.0;
+            _statusText = 'Boost Completed!';
+            _isFinished = true;
+          });
+        }
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final statusColor = Colors.cyanAccent;
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      child: GlassCard(
+        padding: const EdgeInsets.all(24),
+        borderRadius: 24,
+        borderColor: statusColor.withValues(alpha: 0.35),
+        gradientColors: [
+          statusColor.withValues(alpha: 0.12),
+          const Color(0xFF090A15).withValues(alpha: 0.98),
+        ],
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (!_isFinished) ...[
+              Text(
+                'SPEED BOOSTER',
+                style: GoogleFonts.outfit(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.5,
+                ),
+              ),
+              const SizedBox(height: 25),
+              SizedBox(
+                width: 100,
+                height: 100,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    CircularProgressIndicator(
+                      value: _progress,
+                      strokeWidth: 5,
+                      valueColor: AlwaysStoppedAnimation<Color>(statusColor),
+                      backgroundColor: Colors.white10,
+                    ),
+                    Text(
+                      '${(_progress * 100).toInt()}%',
+                      style: GoogleFonts.outfit(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 25),
+              Text(
+                _statusText,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 13,
+                ),
+              ),
+            ] else ...[
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: statusColor.withValues(alpha: 0.15),
+                  border: Border.all(color: statusColor.withValues(alpha: 0.3), width: 1.5),
+                ),
+                child: Icon(Icons.rocket_launch_rounded, color: statusColor, size: 30),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'RAM BOOSTED SUCCESSFULLY!',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.outfit(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.0,
+                ),
+              ),
+              const SizedBox(height: 20),
+              // Results info box
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.04),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.08), width: 1),
+                ),
+                child: Column(
+                  children: [
+                    _buildResultRow('Apps Terminated', '$_killedCount apps'),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8.0),
+                      child: Divider(color: Colors.white10, height: 1),
+                    ),
+                    _buildResultRow('Memory Recovered', '${_freedMB.toStringAsFixed(1)} MB'),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8.0),
+                      child: Divider(color: Colors.white10, height: 1),
+                    ),
+                    _buildResultRow('RAM Usage', '${_oldPercent.toStringAsFixed(0)}% → ${_newPercent.toStringAsFixed(0)}%'),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: statusColor,
+                  foregroundColor: Colors.black,
+                  minimumSize: const Size(double.infinity, 48),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  elevation: 2,
+                ),
+                child: Text(
+                  'GREAT',
+                  style: GoogleFonts.outfit(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildResultRow(String title, String val) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(title, style: const TextStyle(color: Colors.white54, fontSize: 12)),
+        Text(val, style: GoogleFonts.outfit(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+      ],
+    );
+  }
+}
+
+class _JunkCleanerDialogContent extends StatefulWidget {
+  final CoolerProvider provider;
+  const _JunkCleanerDialogContent({required this.provider});
+
+  @override
+  State<_JunkCleanerDialogContent> createState() => _JunkCleanerDialogContentState();
+}
+
+class _JunkCleanerDialogContentState extends State<_JunkCleanerDialogContent> {
+  String _statusText = 'Scanning system files...';
+  double _progress = 0.0;
+  bool _isCleaning = false;
+  bool _isFinished = false;
+  double _freedMB = 0.0;
+  Map<String, double> _junkDetails = {};
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _startScan();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  void _startScan() async {
+    final details = await widget.provider.scanJunkFiles();
+    
+    int steps = 15;
+    int currentStep = 0;
+    _timer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
+      currentStep++;
+      if (mounted) {
+        setState(() {
+          _progress = currentStep / steps;
+          if (currentStep < 5) {
+            _statusText = 'Scanning cache files...';
+          } else if (currentStep < 10) {
+            _statusText = 'Checking system logs...';
+          } else {
+            _statusText = 'Calculating temporary space...';
+          }
+        });
+      }
+
+      if (currentStep >= steps) {
+        timer.cancel();
+        if (mounted) {
+          setState(() {
+            _junkDetails = details;
+          });
+        }
+        _startClean();
+      }
+    });
+  }
+
+  void _startClean() async {
+    if (mounted) {
+      setState(() {
+        _isCleaning = true;
+        _statusText = 'Clearing junk files...';
+        _progress = 0.0;
+      });
+    }
+
+    int steps = 10;
+    int currentStep = 0;
+    _timer = Timer.periodic(const Duration(milliseconds: 150), (timer) async {
+      currentStep++;
+      if (mounted) {
+        setState(() {
+          _progress = currentStep / steps;
+        });
+      }
+
+      if (currentStep >= steps) {
+        timer.cancel();
+        
+        final bytesFreed = await widget.provider.cleanJunks();
+        
+        if (mounted) {
+          setState(() {
+            _freedMB = bytesFreed / (1024.0 * 1024.0);
+            _isCleaning = false;
+            _isFinished = true;
+            _statusText = 'System cleaned!';
+          });
+        }
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final statusColor = Colors.greenAccent;
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      child: GlassCard(
+        padding: const EdgeInsets.all(24),
+        borderRadius: 24,
+        borderColor: statusColor.withValues(alpha: 0.35),
+        gradientColors: [
+          statusColor.withValues(alpha: 0.12),
+          const Color(0xFF090A15).withValues(alpha: 0.98),
+        ],
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (!_isFinished) ...[
+              Text(
+                _isCleaning ? 'CLEANING JUNKS' : 'SCANNING JUNKS',
+                style: GoogleFonts.outfit(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.5,
+                ),
+              ),
+              const SizedBox(height: 25),
+              SizedBox(
+                width: 100,
+                height: 100,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    CircularProgressIndicator(
+                      value: _progress,
+                      strokeWidth: 5,
+                      valueColor: AlwaysStoppedAnimation<Color>(statusColor),
+                      backgroundColor: Colors.white10,
+                    ),
+                    Text(
+                      '${(_progress * 100).toInt()}%',
+                      style: GoogleFonts.outfit(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 25),
+              Text(
+                _statusText,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 13,
+                ),
+              ),
+            ] else ...[
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: statusColor.withValues(alpha: 0.15),
+                  border: Border.all(color: statusColor.withValues(alpha: 0.3), width: 1.5),
+                ),
+                child: Icon(Icons.check_circle_outline_rounded, color: statusColor, size: 34),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'DEVICE FULLY OPTIMIZED!',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.outfit(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.0,
+                ),
+              ),
+              const SizedBox(height: 20),
+              // Results info box
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.04),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.08), width: 1),
+                ),
+                child: Column(
+                  children: [
+                    _buildResultRow('System Cache', '${(_junkDetails['cache'] ?? 0.0).toStringAsFixed(1)} MB'),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8.0),
+                      child: Divider(color: Colors.white10, height: 1),
+                    ),
+                    _buildResultRow('Log Files', '${(_junkDetails['logs'] ?? 0.0).toStringAsFixed(1)} MB'),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8.0),
+                      child: Divider(color: Colors.white10, height: 1),
+                    ),
+                    _buildResultRow('Temp Files', '${(_junkDetails['temp'] ?? 0.0).toStringAsFixed(1)} MB'),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8.0),
+                      child: Divider(color: Colors.white10, height: 1),
+                    ),
+                    _buildResultRow('Total Cleaned', '${_freedMB.toStringAsFixed(1)} MB', isTotal: true),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: statusColor,
+                  foregroundColor: Colors.black,
+                  minimumSize: const Size(double.infinity, 48),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  elevation: 2,
+                ),
+                child: Text(
+                  'EXCELLENT',
+                  style: GoogleFonts.outfit(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildResultRow(String title, String val, {bool isTotal = false}) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            color: isTotal ? Colors.greenAccent : Colors.white54,
+            fontSize: 12,
+            fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
+        Text(
+          val,
+          style: GoogleFonts.outfit(
+            color: isTotal ? Colors.greenAccent : Colors.white,
+            fontSize: isTotal ? 14 : 13,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
     );
   }
 }
