@@ -100,6 +100,22 @@ class CoolerProvider extends ChangeNotifier {
   // Whether real temperature is available (Android)
   bool _hasRealTemp = false;
 
+  // Sensor fields
+  double _accelX = 0.0;
+  double _accelY = 0.0;
+  double _accelZ = 0.0;
+  double _lightLux = 0.0;
+
+  // Power saver mode
+  String _saverMode = 'Normal';
+
+  // Large files list
+  List<Map<String, dynamic>> _largeFiles = [];
+  bool _isScanningLargeFiles = false;
+
+  // Alarm state
+  bool _alarmPlayed = false;
+
   // Getters
   double get temperature => _temperature;
   double get cpuUsage => _cpuUsage;
@@ -129,6 +145,15 @@ class CoolerProvider extends ChangeNotifier {
   bool get autoCool => _autoCool;
   List<AppProcess> get processes => _processes;
   bool get hasRealTemp => _hasRealTemp;
+
+  // Sensor getters
+  double get accelX => _accelX;
+  double get accelY => _accelY;
+  double get accelZ => _accelZ;
+  double get lightLux => _lightLux;
+  String get saverMode => _saverMode;
+  List<Map<String, dynamic>> get largeFiles => _largeFiles;
+  bool get isScanningLargeFiles => _isScanningLargeFiles;
 
   // New Getters for Device Controls and System Info
   double get totalRamMB => _totalRamMB;
@@ -195,8 +220,21 @@ class CoolerProvider extends ChangeNotifier {
 
     _batterySubscription = _battery.onBatteryStateChanged.listen((state) {
       _batteryState = state;
+      _checkBatteryAlarm();
       notifyListeners();
     });
+  }
+
+  void _checkBatteryAlarm() {
+    if (_batteryLevel == 100 && 
+        (_batteryState == BatteryState.charging || _batteryState == BatteryState.full)) {
+      if (!_alarmPlayed) {
+        _alarmPlayed = true;
+        _channel.invokeMethod('playAlarmSound').catchError((_) {});
+      }
+    } else if (_batteryLevel < 95) {
+      _alarmPlayed = false;
+    }
   }
 
   /// Poll real battery temperature from Android native every 3 seconds
@@ -209,6 +247,7 @@ class CoolerProvider extends ChangeNotifier {
       _battery.batteryLevel.then((level) {
         if (_batteryLevel != level) {
           _batteryLevel = level;
+          _checkBatteryAlarm();
           notifyListeners();
         }
       }).catchError((_) {});
@@ -763,6 +802,121 @@ class CoolerProvider extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('auto_cool', val);
     } catch (_) {}
+  }
+
+  Future<void> updateSensorData() async {
+    try {
+      final Map<dynamic, dynamic>? data = await _channel.invokeMethod('getSensorData');
+      if (data != null) {
+        _accelX = (data['accelX'] as num).toDouble();
+        _accelY = (data['accelY'] as num).toDouble();
+        _accelZ = (data['accelZ'] as num).toDouble();
+        _lightLux = (data['lightLux'] as num).toDouble();
+        notifyListeners();
+      }
+    } catch (_) {}
+  }
+
+  Future<void> setSaverMode(String mode) async {
+    _saverMode = mode;
+    notifyListeners();
+    
+    if (mode == 'Eco') {
+      try {
+        await ScreenBrightness().setApplicationScreenBrightness(0.35);
+      } catch (_) {}
+      try {
+        await _channel.invokeMethod('setRingerMode', {'mode': 1}); // vibrate
+      } catch (_) {}
+    } else if (mode == 'Ultra') {
+      try {
+        await ScreenBrightness().setApplicationScreenBrightness(0.15);
+      } catch (_) {}
+      try {
+        await _channel.invokeMethod('setRingerMode', {'mode': 0}); // silent
+      } catch (_) {}
+      try {
+        await _channel.invokeMethod('killBackgroundProcesses');
+      } catch (_) {}
+    } else {
+      try {
+        await ScreenBrightness().resetApplicationScreenBrightness();
+      } catch (_) {}
+      try {
+        await _channel.invokeMethod('setRingerMode', {'mode': 2}); // normal
+      } catch (_) {}
+    }
+  }
+
+  Future<void> scanLargeFiles() async {
+    _isScanningLargeFiles = true;
+    _largeFiles.clear();
+    notifyListeners();
+
+    try {
+      final List<Directory> searchDirs = [];
+      
+      final tempDir = await getTemporaryDirectory();
+      searchDirs.add(tempDir);
+      
+      final appSupportDir = await getApplicationSupportDirectory();
+      searchDirs.add(appSupportDir);
+
+      final docsDir = await getApplicationDocumentsDirectory();
+      searchDirs.add(docsDir);
+
+      for (var dir in searchDirs) {
+        if (await dir.exists()) {
+          await _scanDirRecursively(dir);
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) print('Error scanning files: $e');
+    }
+
+    _isScanningLargeFiles = false;
+    notifyListeners();
+  }
+
+  Future<void> _scanDirRecursively(Directory dir) async {
+    try {
+      final List<FileSystemEntity> entities = await dir.list(recursive: true, followLinks: false).toList();
+      for (var entity in entities) {
+        if (entity is File) {
+          final size = await entity.length();
+          if (size > 10 * 1024 * 1024) {
+            _largeFiles.add({
+              'name': entity.path.split(Platform.pathSeparator).last,
+              'path': entity.path,
+              'size': size,
+              'extension': entity.path.split('.').last.toUpperCase(),
+            });
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
+  Future<void> deleteLargeFile(String path) async {
+    try {
+      final file = File(path);
+      if (await file.exists()) {
+        await file.delete();
+        _largeFiles.removeWhere((f) => f['path'] == path);
+        notifyListeners();
+        await fetchStorageInfo();
+      }
+    } catch (e) {
+      if (kDebugMode) print('Delete file error: $e');
+    }
+  }
+
+  Future<void> uninstallApp(String packageName) async {
+    try {
+      await _channel.invokeMethod('uninstallApp', {'packageName': packageName});
+    } catch (e) {
+      if (kDebugMode) print('Uninstall app error: $e');
+    }
   }
 
   @override

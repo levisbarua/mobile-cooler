@@ -16,13 +16,36 @@ import '../widgets/upgrade_dialog.dart';
 
 import 'optimization_screen.dart';
 import 'settings_screen.dart';
+import 'battery_charging_screen.dart';
+import 'cpu_monitor_screen.dart';
+import 'hardware_diagnostics_screen.dart';
+import 'storage_manager_screen.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
+
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  bool _dismissedCharging = false;
+  BatteryState _lastBatteryState = BatteryState.unknown;
 
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<CoolerProvider>();
+    
+    final isCharging = provider.batteryState == BatteryState.charging ||
+        provider.batteryState == BatteryState.full;
+
+    // Reset dismiss flag when state changes to charging
+    if (provider.batteryState != _lastBatteryState) {
+      if (isCharging && _lastBatteryState != BatteryState.charging && _lastBatteryState != BatteryState.full) {
+        _dismissedCharging = false;
+      }
+      _lastBatteryState = provider.batteryState;
+    }
     final updateService = context.watch<UpdateService>();
     final adService = context.watch<AdService>();
     final showBanner = updateService.isUpdateAvailable ||
@@ -50,7 +73,9 @@ class DashboardScreen extends StatelessWidget {
       descriptionText = 'Your device is operating at optimal temperature.';
     }
 
-    return Scaffold(
+    return Stack(
+      children: [
+        Scaffold(
       backgroundColor: const Color(0xFF090A15),
       body: Container(
             decoration: BoxDecoration(
@@ -1044,6 +1069,61 @@ class DashboardScreen extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 20),
+
+                    // Premium Tools Grid
+                    Text(
+                      'OPTIMIZATION SUITE',
+                      style: GoogleFonts.outfit(
+                        color: Colors.white.withValues(alpha: 0.4),
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 2.0,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    GridView.count(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      crossAxisCount: 2,
+                      crossAxisSpacing: 12,
+                      mainAxisSpacing: 12,
+                      childAspectRatio: 1.45,
+                      children: [
+                        _buildToolCard(
+                          context,
+                          title: 'Power Saver',
+                          subtitle: 'Eco & Ultra modes',
+                          icon: Icons.battery_saver_rounded,
+                          color: Colors.greenAccent,
+                          screen: const BatteryChargingScreen(),
+                        ),
+                        _buildToolCard(
+                          context,
+                          title: 'CPU Monitor',
+                          subtitle: 'Live core clocks',
+                          icon: Icons.query_stats_rounded,
+                          color: Colors.cyanAccent,
+                          screen: const CpuMonitorScreen(),
+                        ),
+                        _buildToolCard(
+                          context,
+                          title: 'Diagnostics',
+                          subtitle: 'Screen & Touch tests',
+                          icon: Icons.fact_check_rounded,
+                          color: Colors.pinkAccent,
+                          screen: const HardwareDiagnosticsScreen(),
+                        ),
+                        _buildToolCard(
+                          context,
+                          title: 'Disk Manager',
+                          subtitle: 'Large files & apps',
+                          icon: Icons.storage_rounded,
+                          color: Colors.amberAccent,
+                          screen: const StorageManagerScreen(),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
                     if (adService.isMockAd && adService.isBannerLoaded)
                       MockBannerAd(
                         onDismiss: () {
@@ -1124,8 +1204,20 @@ class DashboardScreen extends StatelessWidget {
                 ),
               ),
             ),
+          ),
         ),
-      );
+        if (isCharging && !_dismissedCharging)
+          Positioned.fill(
+            child: BatteryChargingScreen(
+              onDismiss: () {
+                setState(() {
+                  _dismissedCharging = true;
+                });
+              },
+            ),
+          ),
+      ],
+    );
     }
 
   Widget _buildShortcutItem({
@@ -1195,6 +1287,58 @@ class DashboardScreen extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildToolCard(
+    BuildContext context, {
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+    required Widget screen,
+  }) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => screen),
+        );
+      },
+      child: GlassCard(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: color, size: 20),
+            ),
+            const Spacer(),
+            Text(
+              title,
+              style: GoogleFonts.outfit(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              subtitle,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.4),
+                fontSize: 10,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

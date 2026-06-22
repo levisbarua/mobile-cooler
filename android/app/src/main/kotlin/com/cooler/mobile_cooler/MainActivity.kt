@@ -20,13 +20,31 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import java.io.File
 import java.util.Random
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
+import android.media.RingtoneManager
 
-class MainActivity : FlutterActivity() {
+class MainActivity : FlutterActivity(), SensorEventListener {
 
     private val CHANNEL = "com.cooler/thermal"
+    
+    private var sensorManager: SensorManager? = null
+    private var accelerometer: Sensor? = null
+    private var lightSensor: Sensor? = null
+    
+    private var accelX = 0.0
+    private var accelY = 0.0
+    private var accelZ = 0.0
+    private var lightLux = 0.0
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        
+        sensorManager = getSystemService(Context.SENSOR_SERVICE) as? SensorManager
+        accelerometer = sensorManager?.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+        lightSensor = sensorManager?.getDefaultSensor(Sensor.TYPE_LIGHT)
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
@@ -94,6 +112,40 @@ class MainActivity : FlutterActivity() {
                 }
                 "getInstalledHeavyApps" -> {
                     result.success(getInstalledHeavyApps())
+                }
+                "getSensorData" -> {
+                    result.success(mapOf(
+                        "accelX" to accelX,
+                        "accelY" to accelY,
+                        "accelZ" to accelZ,
+                        "lightLux" to lightLux
+                    ))
+                }
+                "uninstallApp" -> {
+                    val packageName = call.argument<String>("packageName")
+                    if (packageName != null) {
+                        try {
+                            val intent = Intent(Intent.ACTION_DELETE).apply {
+                                data = Uri.parse("package:$packageName")
+                            }
+                            startActivity(intent)
+                            result.success(true)
+                        } catch (e: Exception) {
+                            result.error("UNINSTALL_FAILED", e.message, null)
+                        }
+                    } else {
+                        result.error("NO_PACKAGE", "Package name not provided", null)
+                    }
+                }
+                "playAlarmSound" -> {
+                    try {
+                        val notificationUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+                        val ringtone = RingtoneManager.getRingtone(applicationContext, notificationUri)
+                        ringtone?.play()
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.error("ALARM_ERROR", e.message, null)
+                    }
                 }
                 else -> result.notImplemented()
             }
@@ -361,4 +413,28 @@ class MainActivity : FlutterActivity() {
         }
         return apps
     }
+
+    override fun onResume() {
+        super.onResume()
+        accelerometer?.let { sensorManager?.registerListener(this, it, SensorManager.SENSOR_DELAY_NORMAL) }
+        lightSensor?.let { sensorManager?.registerListener(this, it, SensorManager.SENSOR_DELAY_NORMAL) }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        sensorManager?.unregisterListener(this)
+    }
+
+    override fun onSensorChanged(event: SensorEvent?) {
+        if (event == null) return
+        if (event.sensor.type == Sensor.TYPE_ACCELEROMETER) {
+            accelX = event.values[0].toDouble()
+            accelY = event.values[1].toDouble()
+            accelZ = event.values[2].toDouble()
+        } else if (event.sensor.type == Sensor.TYPE_LIGHT) {
+            lightLux = event.values[0].toDouble()
+        }
+    }
+
+    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
 }
