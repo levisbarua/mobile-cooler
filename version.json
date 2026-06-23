@@ -1,6 +1,6 @@
 {
-  "version": "1.2.8",
-  "version_code": 20,
-  "download_url": "https://tmpfiles.org/dl/wtwJorZfykOL/app-release.apk",
-  "release_notes": "OTA Update implementing cache-buster logic to fix immediately triggering update popups, real storage cleaner, process booster, and flashlight control."
+  "version": "1.2.9",
+  "version_code": 21,
+  "download_url": "https://tmpfiles.org/dl/wmwCJfOjkpeg/app-release.apk",
+  "release_notes": "Premium optimization suite including live CPU monitor, smart charging wave overlay, battery saver profiles, storage manager, and hardware diagnostics (Dead Pixel & Multitouch tests)."
 }
