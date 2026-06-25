@@ -1,6 +1,6 @@
 {
-  "version": "1.3.1",
-  "version_code": 23,
-  "download_url": "https://tmpfiles.org/dl/wFwqWjdJYscT/app-release.apk",
-  "release_notes": "Security, hardware detection and app management update (v1.3.1). Introduces 3-tab Storage Manager layout (Bulky Files, User Apps, System Apps), actual image thumbnails with pre-deletion preview dialog, real native CPU specs (model & core count) detection under CPU Monitor, and security enforcement of premium cooling intensity profiles in Free mode."
+  "version": "1.3.2",
+  "version_code": 24,
+  "download_url": "https://tmpfiles.org/dl/whwhWkopd4UB/app-release.apk",
+  "release_notes": "System cache optimization and background CPU load update (v1.3.2). Enhances the junk scanner and cache cleaner to traverse the entire shared storage space, internal caches, and external app caches asynchronously for temp, log, and cache files. Includes real physical CPU stress testing via background isolates, and real RAM boosting calculations."
 }

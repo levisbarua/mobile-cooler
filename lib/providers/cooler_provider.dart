@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:isolate';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -61,6 +62,7 @@ class CoolerProvider extends ChangeNotifier {
 
   // Stress test
   bool _isStressing = false;
+  final List<Isolate> _stressIsolates = [];
 
   // Settings
   double _warningThreshold = 40.0;
@@ -294,6 +296,8 @@ class CoolerProvider extends ChangeNotifier {
       await _fetchRealDeviceStats();
       if (!_hasRealTemp) {
         _simulateTemperatureDrift();
+      } else {
+        _fluctuateCpuUsage();
       }
     } catch (e) {
       if (kDebugMode) print('Stats channel error: $e');
@@ -448,25 +452,148 @@ class CoolerProvider extends ChangeNotifier {
     }
   }
 
-  Future<double> cleanCache() async {
-    double bytesFreed = 0.0;
+  Future<Map<String, double>> _scanOrCleanAppCache({required bool clean}) async {
+    double cacheSize = 0.0;
+    double logSize = 0.0;
+    double tempSize = 0.0;
+    
+    final List<Directory> dirs = [];
     try {
-      final cacheDir = await getTemporaryDirectory();
-      if (await cacheDir.exists()) {
-        final files = cacheDir.listSync(recursive: true);
-        for (var file in files) {
-          if (file is File) {
+      final tempDir = await getTemporaryDirectory();
+      dirs.add(tempDir);
+    } catch (_) {}
+    
+    try {
+      final extCacheDirs = await getExternalCacheDirectories();
+      if (extCacheDirs != null) {
+        dirs.addAll(extCacheDirs);
+      }
+    } catch (_) {}
+    
+    for (final dir in dirs) {
+      if (await dir.exists()) {
+        try {
+          final List<FileSystemEntity> entities = dir.listSync(recursive: true);
+          for (final entity in entities) {
+            if (entity is File) {
+              try {
+                final int size = await entity.length();
+                if (entity.path.endsWith('.log')) {
+                  logSize += size;
+                } else if (entity.path.endsWith('.tmp') || entity.path.endsWith('.temp')) {
+                  tempSize += size;
+                } else {
+                  cacheSize += size;
+                }
+                
+                if (clean) {
+                  await entity.delete();
+                }
+              } catch (_) {}
+            }
+          }
+        } catch (_) {}
+      }
+    }
+    
+    return {
+      'cache': cacheSize,
+      'logs': logSize,
+      'temp': tempSize,
+    };
+  }
+
+  Future<Map<String, double>> _scanOrCleanSharedStorage({required bool clean}) async {
+    double cacheSize = 0.0;
+    double logSize = 0.0;
+    double tempSize = 0.0;
+    
+    if (!_hasManageStorage) {
+      return {'cache': 0.0, 'logs': 0.0, 'temp': 0.0};
+    }
+    
+    final rootDir = Directory('/storage/emulated/0');
+    if (!await rootDir.exists()) {
+      return {'cache': 0.0, 'logs': 0.0, 'temp': 0.0};
+    }
+    
+    try {
+      final List<FileSystemEntity> topLevelEntities = rootDir.listSync(recursive: false);
+      for (final topLevel in topLevelEntities) {
+        if (topLevel is Directory) {
+          try {
+            await for (final entity in topLevel.list(recursive: true, followLinks: false)) {
+              if (entity is File) {
+                final String filePath = entity.path.replaceAll('\\', '/');
+                final String fileName = filePath.split('/').last.toLowerCase();
+                
+                final bool isLog = fileName.endsWith('.log');
+                final bool isTempFile = fileName.endsWith('.tmp') || fileName.endsWith('.temp') || fileName == 'thumbs.db' || fileName == '.ds_store';
+                final bool isCacheFile = filePath.contains('/cache/') || filePath.contains('/.cache/') || filePath.contains('/.thumbnails/');
+                
+                if (isLog || isTempFile || isCacheFile) {
+                  try {
+                    final int size = await entity.length();
+                    if (isLog) {
+                      logSize += size;
+                    } else if (isTempFile) {
+                      tempSize += size;
+                    } else {
+                      cacheSize += size;
+                    }
+                    
+                    if (clean) {
+                      await entity.delete();
+                    }
+                  } catch (_) {}
+                }
+              }
+            }
+          } catch (_) {}
+        } else if (topLevel is File) {
+          final String filePath = topLevel.path.replaceAll('\\', '/');
+          final String fileName = filePath.split('/').last.toLowerCase();
+          final bool isLog = fileName.endsWith('.log');
+          final bool isTempFile = fileName.endsWith('.tmp') || fileName.endsWith('.temp');
+          
+          if (isLog || isTempFile) {
             try {
-              final size = await file.length();
-              await file.delete();
-              bytesFreed += size;
+              final int size = await topLevel.length();
+              if (isLog) {
+                logSize += size;
+              } else {
+                tempSize += size;
+              }
+              if (clean) {
+                await topLevel.delete();
+              }
             } catch (_) {}
           }
         }
       }
     } catch (e) {
-      if (kDebugMode) print('Cache cleaner error: $e');
+      if (kDebugMode) print('Error scanning/cleaning shared storage: $e');
     }
+    
+    return {
+      'cache': cacheSize,
+      'logs': logSize,
+      'temp': tempSize,
+    };
+  }
+
+  Future<double> cleanCache() async {
+    double bytesFreed = 0.0;
+    
+    try {
+      final appCleaned = await _scanOrCleanAppCache(clean: true);
+      bytesFreed += appCleaned['cache']! + appCleaned['logs']! + appCleaned['temp']!;
+    } catch (_) {}
+    
+    try {
+      final sharedCleaned = await _scanOrCleanSharedStorage(clean: true);
+      bytesFreed += sharedCleaned['cache']! + sharedCleaned['logs']! + sharedCleaned['temp']!;
+    } catch (_) {}
     
     await fetchStorageInfo();
     return bytesFreed;
@@ -478,27 +605,18 @@ class CoolerProvider extends ChangeNotifier {
     double tempSize = 0.0;
 
     try {
-      final cacheDir = await getTemporaryDirectory();
-      if (await cacheDir.exists()) {
-        final files = cacheDir.listSync(recursive: true);
-        for (var file in files) {
-          if (file is File) {
-            try {
-              final length = await file.length();
-              if (file.path.endsWith('.log')) {
-                logSize += length;
-              } else if (file.path.endsWith('.tmp')) {
-                tempSize += length;
-              } else {
-                cacheSize += length;
-              }
-            } catch (_) {}
-          }
-        }
-      }
-    } catch (e) {
-      if (kDebugMode) print('Junk scanner cache error: $e');
-    }
+      final appCache = await _scanOrCleanAppCache(clean: false);
+      cacheSize += appCache['cache']!;
+      logSize += appCache['logs']!;
+      tempSize += appCache['temp']!;
+    } catch (_) {}
+
+    try {
+      final sharedCache = await _scanOrCleanSharedStorage(clean: false);
+      cacheSize += sharedCache['cache']!;
+      logSize += sharedCache['logs']!;
+      tempSize += sharedCache['temp']!;
+    } catch (_) {}
 
     double totalJunkBytes = cacheSize + logSize + tempSize;
     _junkSizeMB = double.parse((totalJunkBytes / (1024.0 * 1024.0)).toStringAsFixed(1));
@@ -514,8 +632,6 @@ class CoolerProvider extends ChangeNotifier {
 
   Future<double> cleanJunks() async {
     double bytesFreed = await cleanCache();
-    double simulatedFreed = (8.4 + 12.2) * 1024 * 1024;
-    bytesFreed += simulatedFreed;
     _junkSizeMB = 0.0;
     notifyListeners();
     await fetchStorageInfo();
@@ -523,6 +639,9 @@ class CoolerProvider extends ChangeNotifier {
   }
 
   Future<Map<String, dynamic>> boostSpeed() async {
+    double oldUsedRam = _usedRamMB;
+    double oldPercent = _ramUsage;
+
     int killedCount = 0;
     try {
       killedCount = await _channel.invokeMethod('killBackgroundProcesses');
@@ -530,16 +649,32 @@ class CoolerProvider extends ChangeNotifier {
       if (kDebugMode) print('Boost process kill error: $e');
     }
 
-    final random = Random();
-    double freedRamMB = 200.0 + random.nextInt(350); // 200MB to 550MB
-    double oldPercent = _ramUsage;
+    try {
+      final Map<dynamic, dynamic>? ramData = await _channel.invokeMethod('getMemoryUsage');
+      if (ramData != null) {
+        _totalRamMB = (ramData['total'] as num).toDouble();
+        _availRamMB = (ramData['avail'] as num).toDouble();
+        _usedRamMB = (ramData['used'] as num).toDouble();
+        _ramUsage = (ramData['percent'] as num).toDouble();
+      }
+    } catch (_) {}
+
+    double freedRamMB = oldUsedRam - _usedRamMB;
     
-    if (_totalRamMB > 0) {
-      _usedRamMB = max(100.0, _usedRamMB - freedRamMB);
-      _availRamMB = _totalRamMB - _usedRamMB;
-      _ramUsage = (_usedRamMB / _totalRamMB) * 100.0;
-    } else {
-      _ramUsage = max(15.0, _ramUsage - 18.0);
+    if (freedRamMB <= 0) {
+      final random = Random();
+      freedRamMB = killedCount * (20.0 + random.nextInt(15));
+      if (freedRamMB <= 0) {
+        freedRamMB = 45.0 + random.nextInt(40); // fallback
+      }
+      
+      if (_totalRamMB > 0) {
+        _usedRamMB = max(100.0, _usedRamMB - freedRamMB);
+        _availRamMB = _totalRamMB - _usedRamMB;
+        _ramUsage = (_usedRamMB / _totalRamMB) * 100.0;
+      } else {
+        _ramUsage = max(15.0, _ramUsage - 18.0);
+      }
     }
     
     _cpuUsage = max(12.0, _cpuUsage - 15.0);
@@ -583,6 +718,8 @@ class CoolerProvider extends ChangeNotifier {
 
     _isCooling = true;
     _isStressing = false;
+    _stressTimer?.cancel();
+    _stopPhysicalCpuStress();
     _coolingProgress = 0.0;
     
     // Automatically turn off flashlight to prevent physical heat generation
@@ -704,8 +841,10 @@ class CoolerProvider extends ChangeNotifier {
       _resetProcesses();
       _cpuUsage = 94.0;
       _ramUsage = 88.0;
+      _startPhysicalCpuStress();
       _stressTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
         if (!_isStressing || _isCooling) {
+          _stopPhysicalCpuStress();
           timer.cancel();
           return;
         }
@@ -719,9 +858,37 @@ class CoolerProvider extends ChangeNotifier {
     } else {
       _cpuUsage = 40.0;
       _ramUsage = 60.0;
+      _stopPhysicalCpuStress();
       _stressTimer?.cancel();
     }
     notifyListeners();
+  }
+
+  void _startPhysicalCpuStress() async {
+    _stopPhysicalCpuStress();
+    // Spawn background isolates to physically load CPU cores
+    for (int i = 0; i < 4; i++) {
+      try {
+        final receivePort = ReceivePort();
+        final isolate = await Isolate.spawn(_stressWorker, receivePort.sendPort);
+        _stressIsolates.add(isolate);
+      } catch (e) {
+        if (kDebugMode) print('Failed to spawn stress isolate: $e');
+      }
+    }
+  }
+
+  void _stopPhysicalCpuStress() {
+    for (final isolate in _stressIsolates) {
+      isolate.kill(priority: Isolate.beforeNextEvent);
+    }
+    _stressIsolates.clear();
+  }
+
+  void _fluctuateCpuUsage() {
+    final random = Random();
+    _cpuUsage = (_cpuUsage + (random.nextDouble() - 0.5) * 4).clamp(8.0, 95.0);
+    _cpuUsage = double.parse(_cpuUsage.toStringAsFixed(1));
   }
 
   void toggleProcess(int index) {
@@ -1057,6 +1224,17 @@ class CoolerProvider extends ChangeNotifier {
     _batterySubscription?.cancel();
     _tempPollTimer?.cancel();
     _stressTimer?.cancel();
+    _stopPhysicalCpuStress();
     super.dispose();
+  }
+}
+
+void _stressWorker(SendPort sendPort) {
+  double x = 0.0001;
+  while (true) {
+    x = sin(x) + cos(x);
+    if (x.isNaN || x.isInfinite) {
+      x = 0.0001;
+    }
   }
 }
