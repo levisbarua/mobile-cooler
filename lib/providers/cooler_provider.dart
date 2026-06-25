@@ -727,6 +727,18 @@ class CoolerProvider extends ChangeNotifier {
       await toggleFlashlight();
     }
 
+    double? originalBrightness;
+    try {
+      if (_hasWriteSettings) {
+        final double? systemBrightness = await _channel.invokeMethod<double>('getSystemBrightness');
+        if (systemBrightness != null) {
+          originalBrightness = systemBrightness;
+        }
+      } else {
+        originalBrightness = await ScreenBrightness().application;
+      }
+    } catch (_) {}
+
     final resolvedMode = effectiveCoolingMode;
     _coolingStepText = 'Optimizing ($resolvedMode)... Scanning...';
     notifyListeners();
@@ -758,14 +770,22 @@ class CoolerProvider extends ChangeNotifier {
     // Step 1: Lower screen brightness to reduce heat
     _coolingStepText = 'Optimizing device... Lowering screen brightness...';
     notifyListeners();
-    try {
-      if (_hasWriteSettings) {
-        await _channel.invokeMethod('setSystemBrightness', {'brightness': 0.2});
-      } else {
-        await ScreenBrightness().setApplicationScreenBrightness(0.2);
+    if (originalBrightness != null && originalBrightness >= 0.0 && originalBrightness <= 1.0) {
+      try {
+        double targetBrightness = originalBrightness * 0.5;
+        if (targetBrightness < 0.01) targetBrightness = 0.01;
+        if (targetBrightness > 0.15) targetBrightness = 0.15;
+        if (targetBrightness >= originalBrightness) {
+          targetBrightness = (originalBrightness * 0.5).clamp(0.005, 1.0);
+        }
+        if (_hasWriteSettings) {
+          await _channel.invokeMethod('setSystemBrightness', {'brightness': targetBrightness});
+        } else {
+          await ScreenBrightness().setApplicationScreenBrightness(targetBrightness);
+        }
+      } catch (e) {
+        if (kDebugMode) print('Brightness error: $e');
       }
-    } catch (e) {
-      if (kDebugMode) print('Brightness error: $e');
     }
     await Future.delayed(Duration(milliseconds: stepMs));
     _temperature = max(20.0, double.parse((_temperature - stepDrop).toStringAsFixed(1)));
@@ -813,14 +833,16 @@ class CoolerProvider extends ChangeNotifier {
     // Step 5: Restore brightness and finish
     _coolingStepText = 'Optimizing device... Restoring settings. Cooling complete!';
     notifyListeners();
-    try {
-      if (_hasWriteSettings) {
-        await _channel.invokeMethod('setSystemBrightness', {'brightness': 0.7});
-      } else {
-        await ScreenBrightness().resetApplicationScreenBrightness();
+    if (originalBrightness != null && originalBrightness >= 0.0 && originalBrightness <= 1.0) {
+      try {
+        if (_hasWriteSettings) {
+          await _channel.invokeMethod('setSystemBrightness', {'brightness': originalBrightness});
+        } else {
+          await ScreenBrightness().setApplicationScreenBrightness(originalBrightness);
+        }
+      } catch (e) {
+        if (kDebugMode) print('Brightness reset error: $e');
       }
-    } catch (e) {
-      if (kDebugMode) print('Brightness reset error: $e');
     }
 
     _processes.clear();

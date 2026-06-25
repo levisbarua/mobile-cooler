@@ -210,6 +210,13 @@ class MainActivity : FlutterActivity(), SensorEventListener {
                         result.error("BRIGHTNESS_ERROR", e.message, null)
                     }
                 }
+                "getSystemBrightness" -> {
+                    try {
+                        result.success(getSystemBrightness())
+                    } catch (e: Exception) {
+                        result.error("BRIGHTNESS_ERROR", e.message, null)
+                    }
+                }
                 "getRunningAppsUsage" -> {
                     result.success(getRunningAppsUsage())
                 }
@@ -551,6 +558,15 @@ class MainActivity : FlutterActivity(), SensorEventListener {
         if (checkWriteSettingsAccess()) {
             val targetValue = (brightnessValue * 255).toInt().coerceIn(0, 255)
             Settings.System.putInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS, targetValue)
+        }
+    }
+
+    private fun getSystemBrightness(): Double {
+        return try {
+            val value = Settings.System.getInt(contentResolver, Settings.System.SCREEN_BRIGHTNESS)
+            value.toDouble() / 255.0
+        } catch (e: Exception) {
+            0.5
         }
     }
 

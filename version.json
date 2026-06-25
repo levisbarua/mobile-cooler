@@ -1,6 +1,6 @@
 {
-  "version": "1.3.3",
-  "version_code": 25,
-  "download_url": "https://tmpfiles.org/dl/w3w2Wgvo1QBS/app-release.apk",
-  "release_notes": "Automatic background cooling and optimization update (v1.3.3). Integrates Android Jetpack's WorkManager framework to periodically monitor battery temperature and execute silent optimization tasks (terminating background processes and clearing cache) in the background. Generates standard system notifications when background cooling triggers."
+  "version": "1.3.4",
+  "version_code": 26,
+  "download_url": "https://tmpfiles.org/dl/wfwuWxQLFKEw/app-release.apk",
+  "release_notes": "Screen brightness cooling down fix (v1.3.4). Replaces the deprecated ScreenBrightness API, resolves screen brightness increases during the initial cooling down phase by verifying successfully retrieved values, and ensures dimmed levels are strictly lower than the user's current settings. Resolves jarring screen flashes upon cooling completion by restoring the precise original brightness."
 }
