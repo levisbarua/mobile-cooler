@@ -98,7 +98,7 @@ class UpdateService extends ChangeNotifier {
     _setStatus('Downloading update...');
 
     try {
-      final dir = await getExternalStorageDirectory() ?? await getApplicationDocumentsDirectory();
+      final dir = await getTemporaryDirectory();
       final savePath = '${dir.path}/cooler_update.apk';
 
       final file = File(savePath);
