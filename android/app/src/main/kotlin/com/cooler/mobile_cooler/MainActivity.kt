@@ -30,6 +30,10 @@ import android.app.AppOpsManager
 import android.app.usage.UsageStatsManager
 import android.app.usage.UsageStats
 import java.util.Calendar
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
+import androidx.work.ExistingPeriodicWorkPolicy
+import java.util.concurrent.TimeUnit
 
 class MainActivity : FlutterActivity(), SensorEventListener {
 
@@ -46,6 +50,23 @@ class MainActivity : FlutterActivity(), SensorEventListener {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        
+        // Schedule background automatic cooling & optimization
+        try {
+            val optimizationWorkRequest = PeriodicWorkRequestBuilder<OptimizationWorker>(
+                2, TimeUnit.HOURS
+            )
+            .addTag("auto_optimization")
+            .build()
+
+            WorkManager.getInstance(applicationContext).enqueueUniquePeriodicWork(
+                "AutoOptimizationWork",
+                ExistingPeriodicWorkPolicy.KEEP,
+                optimizationWorkRequest
+            )
+        } catch (e: Exception) {
+            android.util.Log.e("MainActivity", "Failed to schedule WorkManager", e)
+        }
         
         sensorManager = getSystemService(Context.SENSOR_SERVICE) as? SensorManager
         accelerometer = sensorManager?.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
