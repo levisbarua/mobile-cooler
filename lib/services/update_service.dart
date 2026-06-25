@@ -149,6 +149,14 @@ class UpdateService extends ChangeNotifier {
             try {
               await sink.close();
               client.close();
+              
+              if (totalBytes > 0 && downloadedBytes < totalBytes) {
+                if (await file.exists()) {
+                  await file.delete();
+                }
+                throw Exception('Incomplete download: got $downloadedBytes of $totalBytes bytes');
+              }
+              
               _downloadedApkPath = savePath;
               _isDownloading = false;
               _isReadyToInstall = true;
