@@ -116,7 +116,20 @@ class CoolerProvider extends ChangeNotifier {
   // Alarm state
   bool _alarmPlayed = false;
 
+  // Advanced Device Permissions (v1.3.0)
+  bool _hasWriteSettings = false;
+  bool _hasNotificationPolicy = false;
+  bool _hasManageStorage = false;
+  bool _hasUsageStats = false;
+  bool _simulatorMode = false;
+
   // Getters
+  bool get hasWriteSettings => _hasWriteSettings;
+  bool get hasNotificationPolicy => _hasNotificationPolicy;
+  bool get hasManageStorage => _hasManageStorage;
+  bool get hasUsageStats => _hasUsageStats;
+  bool get simulatorMode => _simulatorMode;
+
   double get temperature => _temperature;
   double get cpuUsage => _cpuUsage;
   double get ramUsage => _ramUsage;
@@ -186,6 +199,7 @@ class CoolerProvider extends ChangeNotifier {
     _fetchRealDeviceStats();
     _startRealTempPolling();
     _createRealJunkFiles();
+    checkPermissions();
   }
 
   Future<void> _loadSettings() async {
@@ -595,7 +609,11 @@ class CoolerProvider extends ChangeNotifier {
     _coolingStepText = 'Optimizing device... Lowering screen brightness...';
     notifyListeners();
     try {
-      await ScreenBrightness().setApplicationScreenBrightness(0.2);
+      if (_hasWriteSettings) {
+        await _channel.invokeMethod('setSystemBrightness', {'brightness': 0.2});
+      } else {
+        await ScreenBrightness().setApplicationScreenBrightness(0.2);
+      }
     } catch (e) {
       if (kDebugMode) print('Brightness error: $e');
     }
@@ -646,7 +664,11 @@ class CoolerProvider extends ChangeNotifier {
     _coolingStepText = 'Optimizing device... Restoring settings. Cooling complete!';
     notifyListeners();
     try {
-      await ScreenBrightness().resetApplicationScreenBrightness();
+      if (_hasWriteSettings) {
+        await _channel.invokeMethod('setSystemBrightness', {'brightness': 0.7});
+      } else {
+        await ScreenBrightness().resetApplicationScreenBrightness();
+      }
     } catch (e) {
       if (kDebugMode) print('Brightness reset error: $e');
     }
@@ -733,7 +755,8 @@ class CoolerProvider extends ChangeNotifier {
     await Future.delayed(const Duration(seconds: 2));
 
     try {
-      final List<dynamic>? nativeApps = await _channel.invokeMethod('getInstalledHeavyApps');
+      final String method = _hasUsageStats ? 'getRunningAppsUsage' : 'getInstalledHeavyApps';
+      final List<dynamic>? nativeApps = await _channel.invokeMethod(method);
       if (nativeApps != null && nativeApps.isNotEmpty) {
         _processes = nativeApps.map((app) {
           final map = app as Map<dynamic, dynamic>;
@@ -823,14 +846,22 @@ class CoolerProvider extends ChangeNotifier {
     
     if (mode == 'Eco') {
       try {
-        await ScreenBrightness().setApplicationScreenBrightness(0.35);
+        if (_hasWriteSettings) {
+          await _channel.invokeMethod('setSystemBrightness', {'brightness': 0.35});
+        } else {
+          await ScreenBrightness().setApplicationScreenBrightness(0.35);
+        }
       } catch (_) {}
       try {
         await _channel.invokeMethod('setRingerMode', {'mode': 1}); // vibrate
       } catch (_) {}
     } else if (mode == 'Ultra') {
       try {
-        await ScreenBrightness().setApplicationScreenBrightness(0.15);
+        if (_hasWriteSettings) {
+          await _channel.invokeMethod('setSystemBrightness', {'brightness': 0.15});
+        } else {
+          await ScreenBrightness().setApplicationScreenBrightness(0.15);
+        }
       } catch (_) {}
       try {
         await _channel.invokeMethod('setRingerMode', {'mode': 0}); // silent
@@ -840,7 +871,11 @@ class CoolerProvider extends ChangeNotifier {
       } catch (_) {}
     } else {
       try {
-        await ScreenBrightness().resetApplicationScreenBrightness();
+        if (_hasWriteSettings) {
+          await _channel.invokeMethod('setSystemBrightness', {'brightness': 0.7});
+        } else {
+          await ScreenBrightness().resetApplicationScreenBrightness();
+        }
       } catch (_) {}
       try {
         await _channel.invokeMethod('setRingerMode', {'mode': 2}); // normal
@@ -868,6 +903,24 @@ class CoolerProvider extends ChangeNotifier {
       for (var dir in searchDirs) {
         if (await dir.exists()) {
           await _scanDirRecursively(dir);
+        }
+      }
+
+      // Add shared storage paths if MANAGE_EXTERNAL_STORAGE is granted
+      if (_hasManageStorage) {
+        final List<String> publicPaths = [
+          '/storage/emulated/0/Download',
+          '/storage/emulated/0/Documents',
+          '/storage/emulated/0/DCIM',
+          '/storage/emulated/0/Pictures',
+          '/storage/emulated/0/Movies',
+          '/storage/emulated/0/Music',
+        ];
+        for (var path in publicPaths) {
+          final dir = Directory(path);
+          if (await dir.exists()) {
+            await _scanDirRecursively(dir);
+          }
         }
       }
     } catch (e) {
@@ -917,6 +970,69 @@ class CoolerProvider extends ChangeNotifier {
     } catch (e) {
       if (kDebugMode) print('Uninstall app error: $e');
     }
+  }
+
+  Future<void> checkPermissions() async {
+    try {
+      final bool write = await _channel.invokeMethod('checkWriteSettings');
+      final bool notif = await _channel.invokeMethod('checkNotificationPolicy');
+      final bool storage = await _channel.invokeMethod('checkManageStorage');
+      final bool usage = await _channel.invokeMethod('checkUsageStats');
+
+      _hasWriteSettings = write;
+      _hasNotificationPolicy = notif;
+      _hasManageStorage = storage;
+      _hasUsageStats = usage;
+      
+      notifyListeners();
+    } catch (e) {
+      if (kDebugMode) print('Check permissions error: $e');
+    }
+  }
+
+  Future<void> requestWriteSettings() async {
+    try {
+      await _channel.invokeMethod('requestWriteSettings');
+      await Future.delayed(const Duration(milliseconds: 500));
+      await checkPermissions();
+    } catch (e) {
+      if (kDebugMode) print('Request write settings error: $e');
+    }
+  }
+
+  Future<void> requestNotificationPolicy() async {
+    try {
+      await _channel.invokeMethod('requestNotificationPolicy');
+      await Future.delayed(const Duration(milliseconds: 500));
+      await checkPermissions();
+    } catch (e) {
+      if (kDebugMode) print('Request notification policy error: $e');
+    }
+  }
+
+  Future<void> requestManageStorage() async {
+    try {
+      await _channel.invokeMethod('requestManageStorage');
+      await Future.delayed(const Duration(milliseconds: 500));
+      await checkPermissions();
+    } catch (e) {
+      if (kDebugMode) print('Request manage storage error: $e');
+    }
+  }
+
+  Future<void> requestUsageStats() async {
+    try {
+      await _channel.invokeMethod('requestUsageStats');
+      await Future.delayed(const Duration(milliseconds: 500));
+      await checkPermissions();
+    } catch (e) {
+      if (kDebugMode) print('Request usage stats error: $e');
+    }
+  }
+
+  void setSimulatorMode(bool value) {
+    _simulatorMode = value;
+    notifyListeners();
   }
 
   @override

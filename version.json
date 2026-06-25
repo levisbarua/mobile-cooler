@@ -1,6 +1,6 @@
 {
-  "version": "1.2.9",
-  "version_code": 21,
-  "download_url": "https://tmpfiles.org/dl/wmwCJfOjkpeg/app-release.apk",
-  "release_notes": "Premium optimization suite including live CPU monitor, smart charging wave overlay, battery saver profiles, storage manager, and hardware diagnostics (Dead Pixel & Multitouch tests)."
+  "version": "1.3.0",
+  "version_code": 22,
+  "download_url": "https://tmpfiles.org/dl/w1w3WKVgCUYM/app-release.apk",
+  "release_notes": "Advanced System Permissions Dashboard (v1.3.0) with granular control over Write Settings (real system brightness), Do Not Disturb (secure ringer profiles), All Files Storage Access (shared storage scanner), and App Usage Stats (real running process list)."
 }

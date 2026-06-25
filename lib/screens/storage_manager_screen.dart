@@ -38,9 +38,10 @@ class _StorageManagerScreenState extends State<StorageManagerScreen> with Single
     try {
 
       
-      // Call the native method channel directly for installed heavy apps
+      final provider = Provider.of<CoolerProvider>(context, listen: false);
+      final String method = provider.hasUsageStats ? 'getRunningAppsUsage' : 'getInstalledHeavyApps';
       final List<dynamic>? nativeApps = await const MethodChannel('com.cooler/thermal')
-          .invokeMethod('getInstalledHeavyApps');
+          .invokeMethod(method);
       
       if (nativeApps != null) {
         setState(() {

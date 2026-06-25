@@ -20,6 +20,7 @@ import 'battery_charging_screen.dart';
 import 'cpu_monitor_screen.dart';
 import 'hardware_diagnostics_screen.dart';
 import 'storage_manager_screen.dart';
+import 'system_access_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -219,6 +220,70 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ],
                     ),
                     const SizedBox(height: 25),
+
+                    // v1.3.0 - Advanced Permissions Missing Warning Banner
+                    if ((!provider.hasWriteSettings ||
+                        !provider.hasNotificationPolicy ||
+                        !provider.hasManageStorage ||
+                        !provider.hasUsageStats) &&
+                        !provider.simulatorMode) ...[
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const SystemAccessScreen()),
+                          );
+                        },
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 20),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [Colors.orange[900]!.withOpacity(0.85), Colors.amber[800]!.withOpacity(0.85)],
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.amberAccent.withOpacity(0.3), width: 1),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.orange.withOpacity(0.15),
+                                blurRadius: 10,
+                                spreadRadius: 1,
+                              )
+                            ],
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 24),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'System Access Required',
+                                      style: GoogleFonts.outfit(
+                                        color: Colors.white,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'Advanced optimizer tools are pending system permission configuration. Tap to resolve.',
+                                      style: GoogleFonts.outfit(
+                                        color: Colors.white.withOpacity(0.9),
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const Icon(Icons.chevron_right_rounded, color: Colors.white),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
 
                     // Cooling Fan Circular Display Card
                     Center(
@@ -1120,6 +1185,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           icon: Icons.storage_rounded,
                           color: Colors.amberAccent,
                           screen: const StorageManagerScreen(),
+                        ),
+                        _buildToolCard(
+                          context,
+                          title: 'System Access',
+                          subtitle: 'Permission control',
+                          icon: Icons.admin_panel_settings_rounded,
+                          color: Colors.orangeAccent,
+                          screen: const SystemAccessScreen(),
                         ),
                       ],
                     ),
