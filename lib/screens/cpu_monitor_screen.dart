@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../providers/cooler_provider.dart';
@@ -15,6 +16,8 @@ class CpuMonitorScreen extends StatefulWidget {
 }
 
 class _CpuMonitorScreenState extends State<CpuMonitorScreen> {
+  static const _channel = MethodChannel('com.cooler/thermal');
+
   final List<FlSpot> _tempSpots = [];
   Timer? _graphTimer;
   Timer? _coreTimer;
@@ -25,9 +28,43 @@ class _CpuMonitorScreenState extends State<CpuMonitorScreen> {
   int _numCores = 8;
   String _cpuModel = 'Qualcomm Snapdragon 8 Gen 2';
 
+  Future<void> _loadCpuSpecs() async {
+    try {
+      final String? model = await _channel.invokeMethod<String>('getCpuModel');
+      if (model != null && model.isNotEmpty) {
+        setState(() {
+          _cpuModel = model;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading CPU model: $e');
+    }
+
+    try {
+      final Map<dynamic, dynamic>? cpuInfo = await _channel.invokeMethod<Map<dynamic, dynamic>>('getCpuInfo');
+      if (cpuInfo != null) {
+        final cores = cpuInfo['cores'];
+        if (cores is int) {
+          setState(() {
+            _numCores = cores;
+            if (_coreFrequencies.length != cores) {
+              _coreFrequencies.clear();
+              _coreFrequencies.addAll(List.generate(cores, (_) => 1.8));
+              _coreLoads.clear();
+              _coreLoads.addAll(List.generate(cores, (_) => 30));
+            }
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading CPU info: $e');
+    }
+  }
+
   @override
   void initState() {
     super.initState();
+    _loadCpuSpecs();
     // Initialize graph spots
     final provider = context.read<CoolerProvider>();
     for (int i = 9; i >= 0; i--) {

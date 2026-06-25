@@ -141,14 +141,20 @@ class CoolerProvider extends ChangeNotifier {
   bool get isScanning => _isScanning;
   bool get isStressing => _isStressing;
   double get warningThreshold => _warningThreshold;
-  String get coolingMode => _coolingMode;
+  String get coolingMode {
+    if (!_isPro && (_coolingMode == 'Deep Freeze' || _coolingMode == 'Turbo Boost')) {
+      return 'Auto';
+    }
+    return _coolingMode;
+  }
   bool get isPro => _isPro;
   String get effectiveCoolingMode {
-    if (_coolingMode != 'Auto') return _coolingMode;
+    final mode = coolingMode;
+    if (mode != 'Auto') return mode;
     if (_temperature >= _warningThreshold + 4.0) {
-      return 'Turbo Boost';
+      return _isPro ? 'Turbo Boost' : 'Smart Cool';
     } else if (_temperature >= _warningThreshold + 2.0) {
-      return 'Deep Freeze';
+      return _isPro ? 'Deep Freeze' : 'Smart Cool';
     } else if (_temperature < 35.0) {
       return 'Silent Mode';
     } else {
@@ -217,6 +223,13 @@ class CoolerProvider extends ChangeNotifier {
 
   Future<void> setPro(bool value) async {
     _isPro = value;
+    if (!value && (_coolingMode == 'Deep Freeze' || _coolingMode == 'Turbo Boost')) {
+      _coolingMode = 'Auto';
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('cooling_mode', 'Auto');
+      } catch (_) {}
+    }
     notifyListeners();
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -810,11 +823,15 @@ class CoolerProvider extends ChangeNotifier {
   }
 
   void updateCoolingMode(String mode) async {
-    _coolingMode = mode;
+    String finalMode = mode;
+    if (!_isPro && (mode == 'Deep Freeze' || mode == 'Turbo Boost')) {
+      finalMode = 'Auto';
+    }
+    _coolingMode = finalMode;
     notifyListeners();
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('cooling_mode', mode);
+      await prefs.setString('cooling_mode', finalMode);
     } catch (_) {}
   }
 
